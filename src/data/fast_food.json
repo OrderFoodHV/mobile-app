@@ -1,0 +1,26 @@
+[
+  {
+    "id": "4",
+    "name": "Gà rán",
+    "category": "Đồ ăn nhanh",
+    "image": "https://cdn2.tuoitre.vn/thumb_w/480/2017/hinh-1-1507881616159.jpg",
+    "price": "70.000đ",
+    "description": "Miếng gà rán giòn rụm, cay nhẹ."
+  },
+  {
+    "id": "5",
+    "name": "Khoai tây chiên",
+    "category": "Đồ ăn nhanh",
+    "image": "https://cdn2.tuoitre.vn/thumb_w/480/2017/hinh-1-1507881616159.jpg",
+    "price": "35.000đ",
+    "description": "Khoai tây chiên vàng giòn."
+  },
+  {
+    "id": "3",
+    "name": "Hamburger bò",
+    "category": "Đồ ăn nhanh",
+    "image": "https://cdn2.tuoitre.vn/thumb_w/480/2017/hinh-1-1507881616159.jpg",
+    "price": "65.000đ",
+    "description": "Hamburger thịt bò nướng, rau sống và phô mai."
+  }
+]

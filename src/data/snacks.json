@@ -1,0 +1,50 @@
+[
+  {
+    "id": "6",
+    "name": "Bánh tráng trộn",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "25.000đ",
+    "description": "Bánh tráng, khô bò, rau răm, sốt me."
+  },
+  {
+    "id": "7",
+    "name": "Xoài lắc muối tôm",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "30.000đ",
+    "description": "Xoài chua ngọt lắc muối tôm tây ninh."
+  },
+  {
+    "id": "1",
+    "name": "Pizza Phô Mai",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "120.000đ",
+    "description": "Pizza đế mỏng phủ phô mai béo ngậy."
+  },
+  {
+    "id": "2",
+    "name": "Pizza Phô Mai",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "120.000đ",
+    "description": "Pizza đế mỏng phủ phô mai béo ngậy."
+  },
+  {
+    "id": "3",
+    "name": "Pizza Phô Mai",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "120.000đ",
+    "description": "Pizza đế mỏng phủ phô mai béo ngậy."
+  },
+  {
+    "id": "4",
+    "name": "Pizza Phô Mai",
+    "category": "Ăn vặt",
+    "image": "https://www.foodnk.com/wp-content/uploads/2013/05/banh-snack-d.jpg",
+    "price": "120.000đ",
+    "description": "Pizza đế mỏng phủ phô mai béo ngậy."
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "name": "Pizza Phô Mai",
+    "category": "Ăn vặt",
+    "image": "https://i.redd.it/yyr6vtruhzbb1.jpg",
+    "price": "120.000đ",
+    "description": "Pizza đế mỏng phủ phô mai béo ngậy."
+  },
+  {
+    "id": "2",
+    "name": "Trà sữa trân châu",
+    "category": "Đồ uống",
+    "image": "https://teacultureoftheworld.com/cdn/shop/articles/taiwan-milk-tea-with-boba-bubble-pearl-on-plastic-2024-02-05-02-27-11-utc_1200x1200.jpg?v=1714023533",
+    "price": "45.000đ",
+    "description": "Trà sữa truyền thống với trân châu đen dẻo."
+  },
+  {
+    "id": "3",
+    "name": "Hamburger bò",
+    "category": "Đồ ăn nhanh",
+    "image": "https://daynauan.vn/uploads/2015/07/hamburger2.jpg",
+    "price": "65.000đ",
+    "description": "Hamburger thịt bò nướng, rau sống và phô mai."
+  }
+]
