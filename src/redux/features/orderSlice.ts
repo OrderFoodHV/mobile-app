@@ -66,30 +66,27 @@ export const getOrderItemsData = createAsyncThunk(
 );
 
 export const createOrder = createAsyncThunk(
-  "post/createData",
-  async (data: CreateOrderDataSend) => {
+  "post/createOrder",
+  async ({ data, token }: any) => {
+    // 1. Gửi ĐẦY ĐỦ mâm cỗ dữ liệu lên Backend
     const response = await useCallAPI({
       method: "POST",
       url: `${URL_API}/orders/create`,
-      data: {
-        address: data.data.address,
-      },
-      token: data.token,
+      data: data, // 👉 ĐẢM BẢO LÀ data (truyền cả cục), KHÔNG ĐƯỢC VIẾT data: { address: data.address } nhen sếp!
+      token: token,
     });
 
-    if (response?.success === false) {
-      return response;
-    }
-
+    // 2. Trả dữ liệu về cho Redux xử lý (Đoạn sếp bị cắt ngắn ở dòng 81)
     return {
       success: true,
       message: response?.message || "Đặt hàng thành công",
-      result: normalizeOrder({
-        order_id: response?.order_id,
-        total_paid: response?.total_paid,
-        status: response?.status,
-        address: data.data.address,
-      }),
+      // Bao lô mọi trường hợp Backend trả về cục dữ liệu đơn hàng mới tạo
+      result: normalizeOrder(
+        response?.data?.result ||
+          response?.result ||
+          response?.data ||
+          response,
+      ),
     };
   },
 );
@@ -129,7 +126,9 @@ const orderSlice = createSlice({
         state.orderLoading = false;
 
         if (action.payload?.success) {
-          const data = Array.isArray(action.payload.data) ? action.payload.data : [];
+          const data = Array.isArray(action.payload.data)
+            ? action.payload.data
+            : [];
           state.hasMorePaginationOrderListData = false;
           state.paginationOrderListData = data;
           state.currentPagePaginationOrderListData = 2;
@@ -138,10 +137,13 @@ const orderSlice = createSlice({
           state.orderError = action.payload?.message || "Failed";
         }
       })
-      .addCase(getOrderListData.rejected, (state, action: PayloadAction<any>) => {
-        state.orderLoading = false;
-        state.orderError = action.payload || "Failed";
-      })
+      .addCase(
+        getOrderListData.rejected,
+        (state, action: PayloadAction<any>) => {
+          state.orderLoading = false;
+          state.orderError = action.payload || "Failed";
+        },
+      )
       .addCase(createOrder.pending, (state) => {
         state.orderLoading = true;
         state.orderError = null;
@@ -166,7 +168,9 @@ const orderSlice = createSlice({
         state.orderLoading = false;
 
         if (action.payload?.success) {
-          const data = Array.isArray(action.payload.data) ? action.payload.data : [];
+          const data = Array.isArray(action.payload.data)
+            ? action.payload.data
+            : [];
           state.hasMorePaginationOrderItemsData = false;
           state.paginationOrderItemsData = data;
           state.currentPagePaginationOrderItemsData = 2;
@@ -175,10 +179,13 @@ const orderSlice = createSlice({
           state.orderError = action.payload?.message || "Failed";
         }
       })
-      .addCase(getOrderItemsData.rejected, (state, action: PayloadAction<any>) => {
-        state.orderLoading = false;
-        state.orderError = action.payload || "Failed";
-      });
+      .addCase(
+        getOrderItemsData.rejected,
+        (state, action: PayloadAction<any>) => {
+          state.orderLoading = false;
+          state.orderError = action.payload || "Failed";
+        },
+      );
   },
 });
 

@@ -49,15 +49,9 @@ const persistAuthData = async (payload: any) => {
     password: payload?.password,
   };
 
-  await saveObjectDataToStorage(
-    KEY_STORAGE.ACCOUNT_DATA,
-    accountData,
-  );
+  await saveObjectDataToStorage(KEY_STORAGE.ACCOUNT_DATA, accountData);
 
-  await saveObjectDataToStorage(
-    KEY_STORAGE.USER_TOKEN,
-    payload?.token,
-  );
+  await saveObjectDataToStorage(KEY_STORAGE.USER_TOKEN, payload?.token);
 };
 
 export const loginAccount = createAsyncThunk(
@@ -87,9 +81,10 @@ export const registerAccount = createAsyncThunk(
       method: "POST",
       url: `${URL_API}/auth/register`,
       data: {
-        name: data.user_name,
+        name: data.name || data.user_name,
         email: data.email,
         password: data.password,
+        phone: data.phone,
       },
       showToast: false,
     });
@@ -164,15 +159,13 @@ const authSlice = createSlice({
         }
 
         if (!action.payload?.success) {
-          state.authError =
-            action.payload?.message || "Login failed";
+          state.authError = action.payload?.message || "Login failed";
         }
       })
 
       .addCase(loginAccount.rejected, (state, action) => {
         state.authLoading = false;
-        state.authError =
-          action.error.message || "Login failed";
+        state.authError = action.error.message || "Login failed";
       })
 
       // REGISTER
@@ -186,15 +179,13 @@ const authSlice = createSlice({
         state.registerResponse = action.payload;
 
         if (!action.payload?.success) {
-          state.authError =
-            action.payload?.message || "Register failed";
+          state.authError = action.payload?.message || "Register failed";
         }
       })
 
       .addCase(registerAccount.rejected, (state, action) => {
         state.authLoading = false;
-        state.authError =
-          action.error.message || "Register failed";
+        state.authError = action.error.message || "Register failed";
       });
   },
 });

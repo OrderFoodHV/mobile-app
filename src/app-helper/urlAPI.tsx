@@ -1,4 +1,4 @@
-const hostNetwork = "192.19.4.104";
+const hostNetwork = "192.168.1.31";
 export const domain = `http://${hostNetwork}:3000`;
 
 const URL_API = domain;

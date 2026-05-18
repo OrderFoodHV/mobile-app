@@ -5,25 +5,31 @@ import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
 import { useState, useEffect } from "react";
-import { FlatList, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import {
+  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import AppImage from "@app-uikits/AppImage";
 import { Feather } from "@expo/vector-icons";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { TextInput } from "react-native";
 import { filterProducts } from "@app-helper/apiAdapters";
-
+import { useAppTheme } from "src/app-context/ThemeContext";
 const PAGE_SIZE = 6;
 
 const categoryMap: Record<string, string> = {
   "Đồ ăn nhanh": "fast_food",
-  "Đồ uống": "drinks",
-  "Ăn vặt": "snacks",
+  "Đồ uống": "snacks",
+  "Ăn vặt": "drinks",
 };
 
 const Search = () => {
   const { goToCart, goToProductDetail } = useNavigationComponentApp();
-
+  const { themeColors } = useAppTheme();
   const [textSearch, setTextSearch] = useState("");
   const [categorySearch, setCategorySearch] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -60,7 +66,11 @@ const Search = () => {
     const filtered = filterProducts(allProducts, {
       page: currentPage,
       limit: PAGE_SIZE,
-      type: (categorySearch || "all") as "all" | "drinks" | "fast_food" | "snacks",
+      type: (categorySearch || "all") as
+        | "all"
+        | "drinks"
+        | "fast_food"
+        | "snacks",
       filterColumn: "name",
       filterValue: textSearch || "",
     });
@@ -87,18 +97,37 @@ const Search = () => {
   };
 
   const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={{ width: "45%", margin: 10 }} onPress={() => goToProductDetail({ product: item })}>
-      <View style={{ padding: 10, backgroundColor: "#fff", borderRadius: 8, elevation: 3 }}>
-        <AppImage source={{ uri: item.image }} style={{ width: "100%", height: sizes._160sdp, borderRadius: 8 }} />
-        <Text style={{ fontWeight: "bold", fontSize: 16, marginTop: 8 }}>{item.name}</Text>
-        <Text style={{ color: "#888", marginVertical: 4 }}>{item.description}</Text>
-        <Text style={{ color: "#e67e22", fontWeight: "600" }}>{item.price}</Text>
+    <TouchableOpacity
+      style={{ width: "45%", margin: 10 }}
+      onPress={() => goToProductDetail({ product: item })}
+    >
+      <View
+        style={{
+          padding: 10,
+          backgroundColor: "#fff",
+          borderRadius: 8,
+          elevation: 3,
+        }}
+      >
+        <AppImage
+          source={{ uri: item.image }}
+          style={{ width: "100%", height: sizes._160sdp, borderRadius: 8 }}
+        />
+        <Text style={{ fontWeight: "bold", fontSize: 16, marginTop: 8 }}>
+          {item.name}
+        </Text>
+        <Text style={{ color: "#888", marginVertical: 4 }}>
+          {item.description}
+        </Text>
+        <Text style={{ color: "#e67e22", fontWeight: "600" }}>
+          {item.price.toLocaleString()} đ
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <Container style={{ flex: 1, backgroundColor: colors.gray_light }}>
+    <Container style={{ flex: 1, backgroundColor: themeColors.bg }}>
       <View
         style={{
           backgroundColor: colors.blue_primary,
@@ -109,7 +138,12 @@ const Search = () => {
           borderBottomRightRadius: 20,
         }}
       >
-        <View style={{ ...styles_c.row_direction_align_center, justifyContent: "space-between" }}>
+        <View
+          style={{
+            ...styles_c.row_direction_align_center,
+            justifyContent: "space-between",
+          }}
+        >
           <HeaderApp title="Tìm kiếm" />
 
           <TouchableOpacity
@@ -121,7 +155,11 @@ const Search = () => {
               elevation: 4,
             }}
           >
-            <Feather name="shopping-cart" size={20} color={colors.blue_primary} />
+            <Feather
+              name="shopping-cart"
+              size={20}
+              color={colors.blue_primary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -159,13 +197,17 @@ const Search = () => {
 
             return (
               <TouchableOpacity
-                onPress={() => setCategorySearch(isActive ? null : mappedCategory)}
+                onPress={() =>
+                  setCategorySearch(isActive ? null : mappedCategory)
+                }
                 style={{
                   paddingVertical: 8,
                   paddingHorizontal: 14,
                   marginRight: 8,
                   borderRadius: 20,
-                  backgroundColor: isActive ? colors.blue_primary : colors.white,
+                  backgroundColor: isActive
+                    ? colors.blue_primary
+                    : colors.white,
                   elevation: 2,
                 }}
               >
@@ -197,7 +239,9 @@ const Search = () => {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          loading ? <ActivityIndicator size="small" color={colors.blue_primary} /> : null
+          loading ? (
+            <ActivityIndicator size="small" color={colors.blue_primary} />
+          ) : null
         }
       />
     </Container>

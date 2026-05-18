@@ -60,7 +60,8 @@ const useCallAPI = async ({
       });
     }
 
-    return response?.data;
+    // Nếu backend trả về { status, data: [...] } thì bóc luôn lõi ra
+    return response?.data?.data || response?.data;
   } catch (error: any) {
     console.log(`Error with ${method} request to ${url}:`, error);
 

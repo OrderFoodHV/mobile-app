@@ -4,23 +4,53 @@ import { formatDate } from "@app-helper/utilities";
 import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import { useRoute } from "@react-navigation/native";
-import { getOrderListData, resetOrderListData } from "@redux/features/orderSlice";
+import {
+  getOrderListData,
+  resetOrderListData,
+} from "@redux/features/orderSlice";
 import { AppDispatch, RootState } from "@redux/store";
 import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, RefreshControl, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+} from "react-native";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
+import { useAppTheme } from "src/app-context/ThemeContext";
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Chờ xác nhận",
+  cooking: "Đang chế biến",
+  processing: "Đang chế biến",
+  shipping: "Đang giao hàng",
+  delivering: "Đang giao hàng",
+  delivered: "Hoàn thành",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
 
 interface OrderListProps {}
 
 const OrderList: React.FC<OrderListProps> = () => {
+  const { themeColors } = useAppTheme();
   const dispatch = useDispatch<AppDispatch>();
   const route = useRoute<any>();
   const { trigger } = route?.params ?? {};
   const { goToOrderDetail } = useNavigationComponentApp();
 
-  const { currentPagePaginationOrderListData, hasFetchedPaginationOrderListData, hasMorePaginationOrderListData, orderLoading, paginationOrderListData } =
-    useSelector((state: RootState) => state.order, shallowEqual);
-  const { tokenData } = useSelector((state: RootState) => state.auth, shallowEqual);
+  const {
+    currentPagePaginationOrderListData,
+    hasFetchedPaginationOrderListData,
+    hasMorePaginationOrderListData,
+    orderLoading,
+    paginationOrderListData,
+  } = useSelector((state: RootState) => state.order, shallowEqual);
+  const { tokenData } = useSelector(
+    (state: RootState) => state.auth,
+    shallowEqual,
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const [triggerResetData, setTriggerResetData] = useState(false);
@@ -38,7 +68,13 @@ const OrderList: React.FC<OrderListProps> = () => {
 
   const handleLoadMore = () => {
     if (hasMorePaginationOrderListData && !orderLoading && tokenData) {
-      dispatch(getOrderListData({ page: currentPagePaginationOrderListData, limit: 10, token: tokenData }));
+      dispatch(
+        getOrderListData({
+          page: currentPagePaginationOrderListData,
+          limit: 10,
+          token: tokenData,
+        }),
+      );
     }
   };
 
@@ -50,13 +86,30 @@ const OrderList: React.FC<OrderListProps> = () => {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.card} onPress={() => goToOrderDetail({ data: item })}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => goToOrderDetail({ data: item })}
+    >
       {/* Header: ID + Status */}
       <View style={styles.cardHeader}>
         <Text style={styles.orderId}>#{item.id}</Text>
-        <View style={[styles.statusBadge, item.payment_status === "paid" ? styles.paid : styles.unpaid]}>
-          <Text style={[styles.statusText, item.payment_status === "paid" ? styles.paidText : styles.unpaidText]}>
-            {item.payment_status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+        <View
+          style={[
+            styles.statusBadge,
+            item.payment_status === "paid" ? styles.paid : styles.unpaid,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusText,
+              item.payment_status === "paid"
+                ? styles.paidText
+                : styles.unpaidText,
+            ]}
+          >
+            {item.payment_status === "paid"
+              ? "Đã thanh toán"
+              : "Chưa thanh toán"}
           </Text>
         </View>
       </View>
@@ -65,17 +118,27 @@ const OrderList: React.FC<OrderListProps> = () => {
       <View style={styles.cardBody}>
         <View style={styles.row}>
           <Text style={styles.label}>Tổng tiền:</Text>
-          <Text style={styles.value}>{item.total_price}</Text>
+          <Text style={styles.value}>
+            {Number(item.total_price).toLocaleString()} đ
+          </Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Trạng thái:</Text>
           <Text
             style={[
               styles.value,
-              { color: item.order_status === "pending" ? "#F39C12" : "#3498DB", fontWeight: "600" },
+              {
+                color:
+                  (item.status || item.order_status) === "pending"
+                    ? "#F39C12"
+                    : "#3498DB",
+                fontWeight: "600",
+              },
             ]}
           >
-            {item.order_status}
+            {STATUS_LABELS[item.status || item.order_status] ||
+              item.status ||
+              item.order_status}
           </Text>
         </View>
         <View style={styles.row}>
@@ -96,11 +159,15 @@ const OrderList: React.FC<OrderListProps> = () => {
   );
 
   return (
-    <Container>
+    <Container style={{ backgroundColor: themeColors.bg }}>
       <HeaderCustom
         title="Danh sách đơn hàng"
         isShowLeftButton={!!trigger}
-        containerStyle={trigger ? { flexDirection: "row", justifyContent: "space-between" } : { padding: 10 }}
+        containerStyle={
+          trigger
+            ? { flexDirection: "row", justifyContent: "space-between" }
+            : { padding: 10 }
+        }
       />
 
       <FlatList
@@ -108,9 +175,15 @@ const OrderList: React.FC<OrderListProps> = () => {
         keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.8}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefreshData} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefreshData} />
+        }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16, gap: 12 }}
+        contentContainerStyle={{
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          gap: 12,
+        }}
         renderItem={renderItem}
       />
     </Container>
@@ -128,7 +201,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, alignItems: "center" },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    alignItems: "center",
+  },
   orderId: { fontSize: 16, fontWeight: "700", color: "#333" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   paid: { backgroundColor: "#D4F5DD" },
@@ -137,7 +215,11 @@ const styles = StyleSheet.create({
   paidText: { color: "green" },
   unpaidText: { color: "red" },
   cardBody: { borderTopWidth: 1, borderTopColor: "#F0F0F0", paddingTop: 10 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
   label: { fontSize: 14, color: "#555" },
   value: { fontSize: 14, color: "#333", fontWeight: "500" },
   cardFooter: { marginTop: 12, alignItems: "center" },

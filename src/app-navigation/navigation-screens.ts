@@ -1,72 +1,70 @@
 export const ListStackScreens: Record<string, any> = {
   Home: {
-    name: 'Home',
-    component: require('@app-views/Home/Home')
-      .default,
+    name: "Home",
+    component: require("@app-views/Home/Home").default,
   },
   Search: {
-    name: 'Search',
-    component: require('@app-views/Search/Search')
-      .default,
+    name: "Search",
+    component: require("@app-views/Search/Search").default,
   },
   Notification: {
-    name: 'Notification',
-    component: require('@app-views/Notification/Notification')
-      .default,
+    name: "Notification",
+    component: require("@app-views/Notification/Notification").default,
   },
   Personal: {
-    name: 'Personal',
-    component: require('@app-views/Personal/Personal')
-      .default,
+    name: "Personal",
+    component: require("@app-views/Personal/Personal").default,
   },
   Cart: {
-    name: 'Cart',
-    component: require('@app-views/Cart/Cart')
-      .default,
+    name: "Cart",
+    component: require("@app-views/Cart/Cart").default,
   },
   Order: {
-    name: 'Order',
-    component: require('@app-views/Order/Order')
-      .default,
+    name: "Order",
+    component: require("@app-views/Order/Order").default,
   },
   OrderList: {
-    name: 'OrderList',
-    component: require('@app-views/Order/OrderList')
-      .default,
+    name: "OrderList",
+    component: require("@app-views/Order/OrderList").default,
   },
   OrderDetail: {
-    name: 'OrderDetail',
-    component: require('@app-views/Order/OrderDetail')
-      .default,
+    name: "OrderDetail",
+    component: require("@app-views/Order/OrderDetail").default,
   },
   OrderInfo: {
-    name: 'OrderInfo',
-    component: require('@app-views/Order/OrderInfo')
-      .default,
+    name: "OrderInfo",
+    component: require("@app-views/Order/OrderInfo").default,
   },
   Splash: {
-    name: 'Splash',
-    component: require('@app-views/Splash/Splash')
-      .default,
+    name: "Splash",
+    component: require("@app-views/Splash/Splash").default,
   },
   Login: {
-    name: 'Login',
-    component: require('@app-views/LoginAndRegister/Login')
-      .default,
+    name: "Login",
+    component: require("@app-views/LoginAndRegister/Login").default,
   },
   Register: {
-    name: 'Register',
-    component: require('@app-views/LoginAndRegister/Register')
-      .default,
+    name: "Register",
+    component: require("@app-views/LoginAndRegister/Register").default,
   },
   ProductDetail: {
-    name: 'ProductDetail',
-    component: require('@app-views/Products/ProductDetail')
-      .default,
+    name: "ProductDetail",
+    component: require("@app-views/Products/ProductDetail").default,
   },
   BottomContainer: {
-    name: 'BottomContainer',
-    component: require('@app-navigation/BottomTabs/BottomContainer')
-      .default,
+    name: "BottomContainer",
+    component: require("@app-navigation/BottomTabs/BottomContainer").default,
   },
-}
+  ProfileDetail: {
+    name: "ProfileDetail",
+    component: require("@app-views/Personal/ProfileDetail").default,
+  },
+  AddressScreen: {
+    name: "AddressScreen",
+    component: require("@app-views/Personal/AddressScreen").default,
+  },
+  SettingsScreen: {
+    name: "SettingsScreen",
+    component: require("@app-views/Personal/SettingsScreen").default,
+  },
+};

@@ -8,14 +8,9 @@ import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
 import AppImage from "@app-uikits/AppImage";
-import {
-  loginAccount,
-  resetLoginResponse,
-} from "@redux/features/authSlice";
+import { loginAccount, resetLoginResponse } from "@redux/features/authSlice";
 import { AppDispatch, RootState } from "@redux/store";
-import ServiceStorage, {
-  KEY_STORAGE,
-} from "@app-services/service-storage";
+import ServiceStorage, { KEY_STORAGE } from "@app-services/service-storage";
 
 import { Formik } from "formik";
 import React, { useEffect, useState } from "react";
@@ -42,7 +37,7 @@ const Login: React.FC<LoginProps> = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const loginResponse = useSelector(
-    (state: RootState) => state.auth.loginResponse
+    (state: RootState) => state.auth.loginResponse,
   );
 
   const [initialValues, setInitialValues] = useState({
@@ -52,10 +47,9 @@ const Login: React.FC<LoginProps> = () => {
 
   useEffect(() => {
     (async () => {
-      const data = await ServiceStorage.getObject(
-        KEY_STORAGE.ACCOUNT_DATA,
-        {}
-      );
+      //THÊM DÒNG NÀY VÀO ĐỂ TẨY TRẮNG BỘ NHỚ CŨ
+      await ServiceStorage.clearAll();
+      const data = await ServiceStorage.getObject(KEY_STORAGE.ACCOUNT_DATA, {});
 
       setInitialValues({
         email: data?.email || "",
@@ -83,9 +77,9 @@ const Login: React.FC<LoginProps> = () => {
           validationSchema={loginSchema}
           validateOnMount
           onSubmit={(values) => {
-            // dispatch(resetLoginResponse());
-            // dispatch(loginAccount(values));
-            replaceScreen('BottomContainer')
+            dispatch(resetLoginResponse());
+            dispatch(loginAccount(values));
+            // replaceScreen('BottomContainer')
           }}
         >
           {({
@@ -98,9 +92,7 @@ const Login: React.FC<LoginProps> = () => {
             isValid,
           }) => {
             const isDisableButton =
-              !values.email.trim() ||
-              !values.password.trim() ||
-              !isValid;
+              !values.email.trim() || !values.password.trim() || !isValid;
 
             return (
               <View
@@ -161,9 +153,7 @@ const Login: React.FC<LoginProps> = () => {
                     />
 
                     {touched.email && errors.email && (
-                      <Text style={styles.errorText}>
-                        {errors.email}
-                      </Text>
+                      <Text style={styles.errorText}>{errors.email}</Text>
                     )}
                   </View>
 
@@ -186,9 +176,7 @@ const Login: React.FC<LoginProps> = () => {
                     />
 
                     {touched.password && errors.password && (
-                      <Text style={styles.errorText}>
-                        {errors.password}
-                      </Text>
+                      <Text style={styles.errorText}>{errors.password}</Text>
                     )}
                   </View>
 
@@ -198,9 +186,7 @@ const Login: React.FC<LoginProps> = () => {
                     paddingHorizontal={10}
                     paddingVertical={10}
                     backgroundColor={
-                      isDisableButton
-                        ? "#BDBDBD"
-                        : colors.blue_primary
+                      isDisableButton ? "#BDBDBD" : colors.blue_primary
                     }
                     disabled={isDisableButton}
                     onPress={() => handleSubmit()}
