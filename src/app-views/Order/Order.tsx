@@ -1,5 +1,13 @@
 import { Container } from "@app-layout/Layout";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Alert,
+} from "react-native";
 import { useState } from "react";
 import colors from "@assets/colors/global_colors";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
@@ -9,8 +17,10 @@ import { useRoute } from "@react-navigation/native";
 import { formatCurrencyToNumber } from "@app-helper/utilities";
 import showToastApp from "@app-components/CustomToast/ShowToastApp";
 import AppImage from "@app-uikits/AppImage";
+import React from "react";
 
-const getProductKey = (product: any) => Number(product?.id ?? product?.product_id);
+const getProductKey = (product: any) =>
+  Number(product?.id ?? product?.product_id);
 
 const Order: React.FC = () => {
   const route = useRoute<any>();
@@ -22,6 +32,21 @@ const Order: React.FC = () => {
     value: "COD",
   });
   const { goToOrderInfo } = useNavigationComponentApp();
+
+  // 🌟 CẤU HÌNH VOUCHER & PHÍ SHIP KIỂU GRABFOOD
+  const shippingFee = 15000; // Phí ship nội thành cố định
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+
+  // Mảng Voucher có sẵn để khách bấm chọn trực tiếp trên màn tạo đơn
+  const availableVouchers = [
+    {
+      id: 1,
+      code: "DAN_KY_THUAT",
+      discount: 20000,
+      label: "Giảm 20k cho dân HUCE 🛠️",
+    },
+    { id: 2, code: "INORDER10", discount: 10000, label: "Giảm 10k tri ân" },
+  ];
 
   const [quantities, setQuantities] = useState<{ [key: number]: number }>(
     products?.reduce((acc: any, p: any) => {
@@ -40,34 +65,41 @@ const Order: React.FC = () => {
     }
   };
 
-  const totalPrice = products.reduce((sum: number, p: any) => {
+  // 1. Tính tổng tiền món ăn gốc
+  const subTotalPrice = products.reduce((sum: number, p: any) => {
     const price = formatCurrencyToNumber(p.price);
     const qty = quantities[getProductKey(p)] ?? 1;
     return sum + price * qty;
   }, 0);
 
+  // 2. Tính số tiền được giảm từ Voucher
+  const discountAmount = selectedVoucher ? selectedVoucher.discount : 0;
+
+  // 3. Tổng tiền cuối cùng = Tiền món + Ship - Giảm giá
+  const finalTotalPrice = subTotalPrice + shippingFee - discountAmount;
+
   const handlePlaceOrder = () => {
     if (!address) {
-      showToastApp({
-        type: "error",
-        text: "Bạn chưa nhập địa chỉ giao hàng",
-      });
+      showToastApp({ type: "error", text: "Bạn chưa nhập địa chỉ giao hàng" });
       return;
     }
 
     const items = products?.map((p: any) => {
       const productKey = getProductKey(p);
-
       return {
         ...p,
         quantity: quantities[productKey] ?? 1,
-        total_price: formatCurrencyToNumber(p.price) * (quantities[productKey] ?? 1),
+        total_price:
+          formatCurrencyToNumber(p.price) * (quantities[productKey] ?? 1),
         product_id: Number(p.product_id ?? p.id),
       };
     });
 
+    // Đóng gói data gửi sang màn tiếp theo lưu DB
     const data = {
-      total_price: formatCurrencyToNumber(totalPrice),
+      total_price: formatCurrencyToNumber(finalTotalPrice),
+      shipping_fee: shippingFee,
+      voucher_code: selectedVoucher?.code || null,
       order_status: "pending",
       payment_method: payment_method_data,
       payment_method_value: paymentMethod,
@@ -87,9 +119,16 @@ const Order: React.FC = () => {
 
   return (
     <Container>
-      <HeaderCustom title={"Tạo đơn hàng"} rightIcon={<View style={{ flex: 1 }} />} />
-      <View>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <HeaderCustom
+        title={"Tạo đơn hàng"}
+        rightIcon={<View style={{ flex: 1 }} />}
+      />
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ĐỊA CHỈ */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
             <TextInput
@@ -100,17 +139,22 @@ const Order: React.FC = () => {
             />
           </View>
 
+          {/* SẢN PHẨM */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Thông tin sản phẩm</Text>
             {products.map((product: any) => {
               const productKey = getProductKey(product);
-
               return (
                 <View style={styles.productContainer} key={productKey}>
-                  <AppImage source={{ uri: product.image }} style={styles.productImage} />
+                  <AppImage
+                    source={{ uri: product.image }}
+                    style={styles.productImage}
+                  />
                   <View style={styles.productDetails}>
                     <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productPrice}>{product.price.toLocaleString()} đ</Text>
+                    <Text style={styles.productPrice}>
+                      {product.price.toLocaleString()} đ
+                    </Text>
                     <View style={styles.quantityContainer}>
                       <TouchableOpacity
                         onPress={() => handleDecrease(productKey)}
@@ -118,7 +162,9 @@ const Order: React.FC = () => {
                       >
                         <Text style={styles.quantityButtonText}>-</Text>
                       </TouchableOpacity>
-                      <Text style={styles.quantityText}>{quantities[productKey] ?? 1}</Text>
+                      <Text style={styles.quantityText}>
+                        {quantities[productKey] ?? 1}
+                      </Text>
                       <TouchableOpacity
                         onPress={() => handleIncrease(productKey)}
                         style={styles.quantityButton}
@@ -132,11 +178,56 @@ const Order: React.FC = () => {
             })}
           </View>
 
+          {/* 🌟 MỤC CHỌN VOUCHER GIẢM GIÁ TRỰC TIẾP */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tổng tiền</Text>
-            <Text style={styles.totalText}>{totalPrice.toLocaleString()} đ</Text>
+            <Text style={styles.sectionTitle}>Mã giảm giá (Voucher)</Text>
+            <View style={{ gap: 8 }}>
+              {availableVouchers.map((v) => {
+                const isSelected = selectedVoucher?.id === v.id;
+                return (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={[
+                      styles.voucherTicket,
+                      isSelected && styles.voucherSelected,
+                    ]}
+                    onPress={() => setSelectedVoucher(isSelected ? null : v)}
+                  >
+                    <Text
+                      style={[
+                        styles.voucherText,
+                        isSelected && { color: "#fff" },
+                      ]}
+                    >
+                      {v.code} - {v.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
+          {/* CHI TIẾT THANH TOÁN (ĂN THEO TOÁN HỌC PHÍ SHIP) */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
+            <Text style={styles.billingText}>
+              - Tiền món ăn: {subTotalPrice.toLocaleString()} đ
+            </Text>
+            <Text style={styles.billingText}>
+              - Phí giao hàng (Ship): +{shippingFee.toLocaleString()} đ
+            </Text>
+            {selectedVoucher && (
+              <Text style={[styles.billingText, { color: "green" }]}>
+                - Giảm giá Voucher: -{discountAmount.toLocaleString()} đ
+              </Text>
+            )}
+            <Text style={[styles.totalText, { marginTop: 10 }]}>
+              Thành tiền:{" "}
+              {finalTotalPrice < 0 ? 0 : finalTotalPrice.toLocaleString()} đ
+            </Text>
+          </View>
+
+          {/* PHƯƠNG THỨC THANH TOÁN */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
             <View style={styles.paymentOptions}>
@@ -145,7 +236,8 @@ const Order: React.FC = () => {
                   key={method.value}
                   style={[
                     styles.paymentOption,
-                    paymentMethod === method.value && styles.paymentOptionSelected,
+                    paymentMethod === method.value &&
+                      styles.paymentOptionSelected,
                   ]}
                   onPress={() => {
                     setPaymentMethod(method.value);
@@ -155,7 +247,8 @@ const Order: React.FC = () => {
                   <Text
                     style={[
                       styles.paymentOptionText,
-                      paymentMethod === method.value && styles.paymentOptionTextSelected,
+                      paymentMethod === method.value &&
+                        styles.paymentOptionTextSelected,
                     ]}
                   >
                     {method.label}
@@ -164,15 +257,13 @@ const Order: React.FC = () => {
               ))}
             </View>
           </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
-            <Text>- Tổng cộng: {totalPrice.toLocaleString()} đ</Text>
-          </View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.orderButton} onPress={handlePlaceOrder}>
+          <TouchableOpacity
+            style={styles.orderButton}
+            onPress={handlePlaceOrder}
+          >
             <Text style={styles.orderButtonText}>Đặt hàng</Text>
           </TouchableOpacity>
         </View>
@@ -182,9 +273,7 @@ const Order: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 150,
-  },
+  scrollContent: { paddingBottom: 150 },
   section: {
     padding: 16,
     borderBottomWidth: 1,
@@ -192,11 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginBottom: 8,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 12 },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -210,28 +295,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  productImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  productDetails: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  productPrice: {
-    fontSize: 14,
-    color: "#e53935",
-    marginVertical: 8,
-  },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  productImage: { width: 80, height: 80, borderRadius: 8, marginRight: 16 },
+  productDetails: { flex: 1 },
+  productName: { fontSize: 16, fontWeight: "bold" },
+  productPrice: { fontSize: 14, color: "#e53935", marginVertical: 8 },
+  quantityContainer: { flexDirection: "row", alignItems: "center" },
   quantityButton: {
     width: 32,
     height: 32,
@@ -240,23 +308,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quantityButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
+  quantityButtonText: { fontSize: 18, fontWeight: "bold" },
+  quantityText: { fontSize: 16, marginHorizontal: 12 },
+  totalText: { fontSize: 16, fontWeight: "bold", color: "#e53935" },
+  billingText: { fontSize: 14, color: "#555", marginBottom: 4 },
+  voucherTicket: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+    borderStyle: "dashed",
+    borderRadius: 8,
+    backgroundColor: "#FFF5F5",
   },
-  quantityText: {
-    fontSize: 16,
-    marginHorizontal: 12,
-  },
-  totalText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#e53935",
-  },
-  paymentOptions: {
-    flexDirection: "column",
-    gap: 10,
-  },
+  voucherSelected: { backgroundColor: "#EF4444" },
+  voucherText: { fontSize: 13, color: "#EF4444", fontWeight: "600" },
+  paymentOptions: { flexDirection: "column", gap: 10 },
   paymentOption: {
     padding: 12,
     borderWidth: 1,
@@ -269,17 +335,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.blue_primary,
     borderColor: colors.blue_primary,
   },
-  paymentOptionText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  paymentOptionTextSelected: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  paymentOptionText: { fontSize: 14, color: "#333" },
+  paymentOptionTextSelected: { color: "#fff", fontWeight: "bold" },
   footer: {
     position: "absolute",
-    bottom: sizes._60sdp,
+    bottom: 20,
     left: 0,
     right: 0,
     backgroundColor: "#fff",
@@ -293,11 +353,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  orderButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  orderButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
 
 export default Order;

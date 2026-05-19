@@ -1,8 +1,5 @@
 export const ListStackScreens: Record<string, any> = {
-  Home: {
-    name: "Home",
-    component: require("@app-views/Home/Home").default,
-  },
+  Home: { name: "Home", component: require("@app-views/Home/Home").default },
   Search: {
     name: "Search",
     component: require("@app-views/Search/Search").default,
@@ -15,10 +12,7 @@ export const ListStackScreens: Record<string, any> = {
     name: "Personal",
     component: require("@app-views/Personal/Personal").default,
   },
-  Cart: {
-    name: "Cart",
-    component: require("@app-views/Cart/Cart").default,
-  },
+  Cart: { name: "Cart", component: require("@app-views/Cart/Cart").default },
   Order: {
     name: "Order",
     component: require("@app-views/Order/Order").default,

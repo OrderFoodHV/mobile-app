@@ -8,160 +8,176 @@ import {
   TextInput,
   Alert,
 } from "react-native";
-import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
+
+import HeaderApp from "@app-components/HeaderApp/HeaderApp";
 import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
-import { useAppTheme } from "src/app-context/ThemeContext"; // 👉 Import để ăn theo Dark Mode toàn cục
 
-const AddressScreen = () => {
-  const { themeColors } = useAppTheme();
+const AddressScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
 
-  // Mảng quản lý danh sách địa chỉ động
-  const [addresses, setAddresses] = useState<string[]>([
-    "1/2 Đại La, Phường Đồng Tâm, Quận Hai Bà Trưng, Hà Nội",
+  // 🌟 KHÔI PHỤC DANH SÁCH ĐỊA CHỈ ĐỂ DEMO CHUẨN
+  const [addressList, setAddressList] = useState([
+    {
+      id: "1",
+      title: "Nhà riêng",
+      detail: "Số 55 Giải Phóng, Hai Bà Trưng, Hà Nội",
+    },
   ]);
-  const [inputText, setInputText] = useState("");
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
 
-  // Hàm xử lý chung cho cả Thêm và Sửa
-  const handleSave = () => {
-    if (inputText.trim() === "") {
-      Alert.alert("Lỗi", "Sếp vui lòng nhập địa chỉ nhé!");
-      return;
-    }
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
-    if (editIndex !== null) {
-      // 🛠️ HÀNH ĐỘNG SỬA ĐỊA CHỈ
-      const updated = [...addresses];
-      updated[editIndex] = inputText.trim();
-      setAddresses(updated);
-      Alert.alert("Thành công", "Đã cập nhật địa chỉ thành công!");
-    } else {
-      // ➕ HÀNH ĐỘNG THÊM ĐỊA CHỈ MỚI
-      setAddresses([...addresses, inputText.trim()]);
-      Alert.alert("Thành công", "Đã thêm địa chỉ mới!");
-    }
+  // State quản lý việc bật/tắt form Thêm địa chỉ mới
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("Văn phòng");
+  const [newDetail, setNewDetail] = useState("");
 
-    // Reset Form
-    setInputText("");
-    setIsFormOpen(false);
-    setEditIndex(null);
+  // Hàm lưu khi sửa địa chỉ cũ
+  const handleSaveEdit = (id: string) => {
+    setAddressList((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, detail: editValue } : item,
+      ),
+    );
+    setEditingId(null);
+    Alert.alert("Thành công", "Đã cập nhật địa chỉ giao hàng!");
   };
 
-  // Khi bấm nút Sửa: Đổ chữ cũ vào ô nhập và bật form lên
-  const handleEdit = (index: number) => {
-    setEditIndex(index);
-    setInputText(addresses[index]);
-    setIsFormOpen(true);
-  };
-
-  // Hàm xóa địa chỉ phụ
-  const handleDelete = (index: number) => {
-    if (index === 0) {
-      Alert.alert("Thông báo", "Không được xóa địa chỉ mặc định sếp ơi!");
+  // 🌟 HÀM XỬ LÝ LƯU ĐỊA CHỈ MỚI
+  const handleSaveNew = () => {
+    if (!newDetail.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập chi tiết địa chỉ!");
       return;
     }
-    const updated = addresses.filter((_, i) => i !== index);
-    setAddresses(updated);
+    const newAddress = {
+      id: Date.now().toString(),
+      title: newTitle,
+      detail: newDetail,
+    };
+    setAddressList([...addressList, newAddress]);
+    setIsAdding(false);
+    setNewDetail("");
+    Alert.alert("Thành công", "Đã thêm địa chỉ mới!");
   };
 
   return (
-    <Container style={{ backgroundColor: themeColors.bg }}>
-      <HeaderCustom title="Sổ địa chỉ giao hàng" isShowLeftButton={true} />
+    <Container style={{ backgroundColor: "#F3F4F6" }}>
+      <HeaderApp
+        title="Địa chỉ giao hàng"
+        leftIcon="arrow-left"
+        onLeftPress={() => navigation.goBack()}
+      />
 
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: themeColors.bg === "#121212" ? "#aaa" : "#666" },
-          ]}
-        >
-          Danh sách địa chỉ
-        </Text>
-
-        {/* Vòng lặp danh sách địa chỉ */}
-        {addresses.map((item, index) => (
-          <View
-            key={index}
-            style={[
-              styles.addressCard,
-              {
-                backgroundColor: themeColors.card,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <View style={styles.headerRow}>
-              <Text style={styles.nameText}>Địa chỉ #{index + 1}</Text>
-              {index === 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Mặc định</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.addressText}>{item}</Text>
-
-            {/* Thanh nút bấm hành động */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity onPress={() => handleEdit(index)}>
-                <Text style={styles.editText}>Sửa địa chỉ</Text>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {/* DUYỆT DANH SÁCH ĐỊA CHỈ */}
+        {addressList.map((item) => (
+          <View key={item.id} style={styles.card}>
+            <View style={styles.headerCard}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Feather name="map-pin" size={20} color={colors.blue_primary} />
+                <Text style={styles.title}>{item.title}</Text>
+              </View>
+              {/* Nút bấm để sửa địa chỉ */}
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingId(item.id);
+                  setEditValue(item.detail);
+                }}
+              >
+                <Feather name="edit" size={20} color={colors.blue_primary} />
               </TouchableOpacity>
-              {index > 0 && (
-                <TouchableOpacity onPress={() => handleDelete(index)}>
-                  <Text style={styles.deleteText}>Xóa</Text>
-                </TouchableOpacity>
-              )}
             </View>
+
+            {editingId === item.id ? (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={editValue}
+                  onChangeText={setEditValue}
+                  multiline
+                />
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: "#9CA3AF", marginRight: 10 },
+                    ]}
+                    onPress={() => setEditingId(null)}
+                  >
+                    <Text style={styles.saveBtnText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={() => handleSaveEdit(item.id)}
+                  >
+                    <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.addressText}>{item.detail}</Text>
+            )}
           </View>
         ))}
 
-        {/* Khối Nhập liệu thông minh (Dùng chung cho cả Thêm và Sửa) */}
-        {isFormOpen ? (
+        {/* 🌟 FORM THÊM ĐỊA CHỈ MỚI */}
+        {isAdding ? (
           <View
-            style={[styles.inputCard, { backgroundColor: themeColors.card }]}
+            style={[
+              styles.card,
+              { borderColor: colors.blue_primary, borderWidth: 1 },
+            ]}
           >
-            <Text style={styles.formTitle}>
-              {editIndex !== null ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
+            <Text style={styles.label}>
+              Tên địa chỉ (VD: Công ty, Nhà riêng)
             </Text>
             <TextInput
+              style={[styles.input, { minHeight: 40, marginBottom: 10 }]}
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
+
+            <Text style={styles.label}>Chi tiết địa chỉ:</Text>
+            <TextInput
               style={styles.input}
-              placeholder="Nhập địa chỉ tại đây..."
-              placeholderTextColor="#999"
-              value={inputText}
-              onChangeText={(text) => setInputText(text)} // ✅ Hết sạch lỗi mất bàn phím!
+              value={newDetail}
+              onChangeText={setNewDetail}
+              placeholder="Nhập địa chỉ cụ thể..."
               multiline
             />
-            <View style={styles.inputActions}>
+
+            <View style={styles.actionRow}>
               <TouchableOpacity
-                style={[styles.miniBtn, styles.cancelBtn]}
-                onPress={() => {
-                  setIsFormOpen(false);
-                  setInputText("");
-                  setEditIndex(null);
-                }}
+                style={[
+                  styles.saveBtn,
+                  { backgroundColor: "#FEE2E2", marginRight: 10 },
+                ]}
+                onPress={() => setIsAdding(false)}
               >
-                <Text style={styles.miniBtnText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.miniBtn, styles.saveBtn]}
-                onPress={handleSave}
-              >
-                <Text style={[styles.miniBtnText, { color: "#fff" }]}>
-                  Lưu lại
+                <Text style={[styles.saveBtnText, { color: "#EF4444" }]}>
+                  Hủy bỏ
                 </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveNew}>
+                <Text style={styles.saveBtnText}>Xác nhận Thêm</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setIsFormOpen(true)}
+            style={styles.addBtn}
+            onPress={() => setIsAdding(true)}
           >
-            <Text style={styles.addButtonText}>+ Thêm địa chỉ mới</Text>
+            <Feather
+              name="plus-circle"
+              size={20}
+              color="#fff"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.addBtnText}>Thêm địa chỉ mới</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -170,81 +186,62 @@ const AddressScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: "600", marginBottom: 12 },
-  addressCard: {
+  card: {
+    backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    elevation: 2,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  nameText: { fontSize: 14, fontWeight: "700", color: "#333" },
-  badge: {
-    backgroundColor: "#EBF5FF",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: { color: colors.blue_primary, fontSize: 11, fontWeight: "600" },
-  addressText: { fontSize: 14, color: "#555", lineHeight: 20 },
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 15,
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingTop: 8,
-  },
-  editText: { color: colors.blue_primary, fontWeight: "600", fontSize: 13 },
-  deleteText: { color: "#EF4444", fontWeight: "600", fontSize: 13 },
-  addButton: {
-    borderWidth: 1,
-    borderColor: colors.blue_primary,
-    borderStyle: "dashed",
-    padding: 14,
     borderRadius: 12,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  headerCard: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    paddingBottom: 10,
   },
-  addButtonText: {
-    color: colors.blue_primary,
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  inputCard: { borderRadius: 16, padding: 12, elevation: 2 },
-  formTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 8,
-  },
+  title: { fontSize: 16, fontWeight: "bold", color: "#1F2937", marginLeft: 8 },
+  label: { fontSize: 14, color: "#6B7280", marginBottom: 6, fontWeight: "500" },
+  addressText: { fontSize: 15, color: "#4B5563", lineHeight: 22 },
+  inputContainer: { marginTop: 10 },
   input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
+    backgroundColor: "#F9FAFB",
     borderRadius: 8,
-    padding: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#1F2937",
     minHeight: 60,
     textAlignVertical: "top",
-    fontSize: 14,
-    color: "#333",
+    marginBottom: 10,
   },
-  inputActions: {
+  actionRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 12,
+    justifyContent: "space-between",
+    marginTop: 5,
   },
-  miniBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
-  cancelBtn: { backgroundColor: "#F3F4F6" },
-  saveBtn: { backgroundColor: colors.blue_primary },
-  miniBtnText: { 动作: "600", fontSize: 13, color: "#333" },
+  saveBtn: {
+    flex: 1,
+    backgroundColor: colors.blue_primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  saveBtnText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+  addBtn: {
+    flexDirection: "row",
+    backgroundColor: "#10B981",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+  },
+  addBtnText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
 
 export default AddressScreen;

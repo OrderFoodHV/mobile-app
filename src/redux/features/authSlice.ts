@@ -111,6 +111,14 @@ const authSlice = createSlice({
       state.authError = null;
       state.authLoading = false;
     },
+    updateAuthInfor: (state: any, action: any) => {
+      if (state.account) {
+        // Ép kiểu cục bộ sang any để tự do thêm trường phone mà không sợ TypeScript bắt bẻ
+        const safeAccount = state.account as any;
+        state.account.user_name = action.payload.user_name;
+        state.account.phone = action.payload.phone;
+      }
+    },
 
     hydrateAuth: (
       state,
@@ -195,6 +203,7 @@ export const {
   resetRegisterResponse,
   hydrateAuth,
   resetAllAuth,
+  updateAuthInfor,
 } = authSlice.actions;
 
 export default authSlice.reducer;

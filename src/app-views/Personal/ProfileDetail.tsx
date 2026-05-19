@@ -15,7 +15,7 @@ import { RootState } from "@redux/store";
 import colors from "@assets/colors/global_colors";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
-
+import { updateAuthInfor } from "@redux/features/authSlice";
 const ProfileDetail = () => {
   // Lấy dữ liệu chuẩn từ auth slice giống file Personal.tsx
   const { account, tokenData } = useSelector(
@@ -41,6 +41,10 @@ const ProfileDetail = () => {
         showToast: true,
         successTitle: "Cập nhật hồ sơ thành công!",
       });
+
+      // 🌟 THẦN CHÚ ĐÂY: Đồng bộ ngược lại Redux để hiển thị lên màn hình ngay lập tức!
+      dispatch(updateAuthInfor({ user_name: userName, phone: phone }));
+
       setIsEditing(false);
     } catch (error) {
       console.log("Lỗi cập nhật hồ sơ:", error);

@@ -1,198 +1,198 @@
-import { useNavigation } from "@react-navigation/native";
-import React, { Fragment, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
 } from "react-native";
-import { Container, Content } from "@app-layout/Layout";
-import { Ionicons } from "@expo/vector-icons";
-import AppImage from "@app-uikits/AppImage";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
+import { useSelector, shallowEqual, useDispatch } from "react-redux";
+import { resetAllAuth } from "src/redux/features/authSlice";
+import { RootState } from "../../redux/store";
+import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
-import {
-  useNavigationComponentApp,
-  useNavigationServices,
-} from "@app-helper/navigateToScreens";
-import { shallowEqual, useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@redux/store";
-import { resetAllAuth } from "@redux/features/authSlice";
-import { resetAllCart } from "@redux/features/cartSlice";
-import { resetAllOrderData } from "@redux/features/orderSlice";
-import { resetAllProductListData } from "@redux/features/productListSlice";
-import AppLoading from "@app-components/AppLoading/AppLoading";
-import { LOGOAPP } from "@app-uikits/image";
-import ServiceStorage from "@app-services/service-storage";
-import { useAppTheme } from "src/app-context/ThemeContext";
-const Personal = () => {
-  const { themeColors } = useAppTheme();
-  const { replaceScreen } = useNavigationServices();
-  const { goToOrderList, goToCart } = useNavigationComponentApp();
+
+const Personal: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { account } = useSelector(
-    (state: RootState) => state.auth,
+  const dispatch = useDispatch();
+  // 🌟 FIX 2: Thêm "as any" để TypeScript hết báo đỏ
+  const authState = useSelector(
+    (state: RootState) => state.auth as any,
     shallowEqual,
   );
-  const dispatch = useDispatch<AppDispatch>();
-  const [loading, setLoading] = useState(false);
 
-  const onLogout = async () => {
-    setLoading(true);
-    await ServiceStorage.clearAll();
-    dispatch(resetAllAuth());
-    dispatch(resetAllCart());
-    dispatch(resetAllOrderData());
-    dispatch(resetAllProductListData());
-    setLoading(false);
-    replaceScreen("Login");
-  };
-  const menuOptions = [
-    {
-      id: "1",
-      icon: "person-outline",
-      title: "Thông tin tài khoản",
-      press: () => navigation.navigate("ProfileDetail"),
-    },
-    {
-      id: "2",
-      icon: "receipt-outline",
-      title: "Đơn hàng",
-      press: () => goToOrderList({ trigger: true }),
-    },
-    {
-      id: "3",
-      icon: "cart-outline",
-      title: "Giỏ hàng",
-      press: () => goToCart(),
-    },
-    {
-      id: "4",
-      icon: "location-outline",
-      title: "Địa chỉ",
-      press: () => navigation.navigate("AddressScreen"),
-    },
-    {
-      id: "5",
-      icon: "settings-outline",
-      title: "Cài đặt",
-      press: () => navigation.navigate("SettingsScreen"),
-    },
-    {
-      id: "6",
-      icon: "log-out-outline",
-      title: "Đăng xuất",
-      press: () => onLogout(),
-    },
-  ];
-
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity style={styles.menuItem} onPress={item.press}>
-      <View style={styles.left}>
-        <Ionicons name={item.icon} size={20} color={colors.blue_primary} />
-        <Text style={styles.menuText}>{item.title}</Text>
-      </View>
-
-      <Ionicons name="chevron-forward-outline" size={18} color="#999" />
-    </TouchableOpacity>
-  );
+  // Đề phòng data trả về tên khác nhau
+  const user = authState?.user || authState?.userInfo || authState?.userData;
+  const displayName =
+    user?.name || user?.fullName || user?.fullname || user?.data?.name || "An";
 
   return (
-    <Container style={{ backgroundColor: themeColors.bg }}>
-      <Content>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View style={styles.avatarWrapper}>
-            <AppImage source={LOGOAPP} style={styles.avatar} />
+    <Container style={{ backgroundColor: "#F3F4F6" }}>
+      {/* 🌟 HEADER MÀU XANH GIỐNG ẢNH SẾP CHỤP */}
+      <View style={styles.headerBlue}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatarCircle}>
+            <Feather name="user" size={32} color="#fff" />
           </View>
-          <Text style={styles.username}>{account?.user_name || "User"}</Text>
+          <Text style={styles.avatarName}>{displayName}</Text>
         </View>
+      </View>
 
-        {/* MENU */}
-        <View style={styles.card}>
-          <FlatList
-            data={menuOptions}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
+      {/* 🌟 ĐÃ XÓA MẶC ĐỊNH MẶC MARGIN TOP BỊ LỖI, GIAO DIỆN HIỆN CHUẨN */}
+      <ScrollView style={styles.scrollContainer}>
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("ProfileDetail")}
+          >
+            <Feather
+              name="user"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Thông tin tài khoản</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("OrderList")}
+          >
+            <Feather
+              name="file-text"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Đơn hàng</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("Cart")}
+          >
+            <Feather
+              name="shopping-cart"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Giỏ hàng</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("AddressScreen")}
+          >
+            <Feather
+              name="map-pin"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Địa chỉ</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("SettingsScreen")}
+          >
+            <Feather
+              name="settings"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Cài đặt</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("StoreBottomContainer")}
+          >
+            <Feather
+              name="home"
+              size={20}
+              color="#F97316"
+              style={styles.menuIcon}
+            />
+            <Text
+              style={[
+                styles.menuText,
+                { color: "#F97316", fontWeight: "bold" },
+              ]}
+            >
+              Kênh Người Bán
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
+            onPress={() => {
+              // 1. Gọi hàm resetAllAuth để xóa sạch Token trong Redux
+              dispatch(resetAllAuth());
+
+              // 2. Chờ Redux xóa xong trong 0.2 giây rồi đá sang màn Login tĩnh lặng luôn
+              setTimeout(() => {
+                navigation.replace("Login");
+              }, 200);
+            }}
+          >
+            <Feather
+              name="log-out"
+              size={20}
+              color="#0284C7"
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuText}>Đăng xuất</Text>
+          </TouchableOpacity>
         </View>
-      </Content>
-
-      {loading && <AppLoading loading={loading} />}
+      </ScrollView>
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: colors.blue_primary,
+  headerBlue: {
+    backgroundColor: colors.blue_primary || "#3498db",
+    height: 120, // Độ cao vừa phải
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+    position: "relative",
+    zIndex: 10,
+  },
+  avatarContainer: {
+    position: "absolute",
+    right: 20,
+    bottom: 15,
     alignItems: "center",
-    paddingTop: 40,
-    paddingBottom: 60,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
-
-  avatarWrapper: {
-    backgroundColor: "#fff",
-    padding: 4,
-    borderRadius: 50,
-    marginBottom: 10,
+  avatarCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 5,
   },
-
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-
-  username: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
-  card: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: -40,
-    borderRadius: 16,
-    paddingVertical: 10,
-
-    // shadow iOS
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5, // Android
-  },
-
+  avatarName: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  scrollContainer: { flex: 1, backgroundColor: "#F3F4F6" },
+  menuContainer: { backgroundColor: "#fff", marginTop: 10 },
   menuItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
-
-  left: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-
-  menuText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#333",
-  },
-
-  separator: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginHorizontal: 16,
-  },
+  menuIcon: { marginRight: 15 },
+  menuText: { fontSize: 16, color: "#374151" },
 });
 
 export default Personal;
