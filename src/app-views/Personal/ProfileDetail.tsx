@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/app-views/Personal/ProfileDetail.tsx
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,14 +11,18 @@ import {
 } from "react-native";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { Container } from "@app-layout/Layout";
-import { useSelector, shallowEqual } from "react-redux";
-import { RootState } from "@redux/store";
+import { useSelector, shallowEqual, useDispatch } from "react-redux"; // 🔥 ĐÃ THÊM useDispatch Ở ĐÂY
+import { AppDispatch, RootState } from "@redux/store";
 import colors from "@assets/colors/global_colors";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { updateAuthInfor } from "@redux/features/authSlice";
+
 const ProfileDetail = () => {
-  // Lấy dữ liệu chuẩn từ auth slice giống file Personal.tsx
+  // Khởi tạo dispatch để đẩy dữ liệu lên Redux Store
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Lấy dữ liệu chuẩn từ auth slice (Đã bao gồm cả phone thật)
   const { account, tokenData } = useSelector(
     (state: RootState) => state.auth,
     shallowEqual,
@@ -25,13 +30,28 @@ const ProfileDetail = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [userName, setUserName] = useState(account?.user_name || "User HUCE");
-  const [phone, setPhone] = useState(account?.phone || "0912.345.678");
+
+  // 🔥 ĐỒNG BỘ: Lấy đúng số điện thoại khách lúc đăng ký từ Redux (account.phone), nếu không có mới hiện mặc định
+  const [phone, setPhone] = useState((account as any)?.phone || "0912345678");
+
+  // Bộ bùa chú useEffect theo dõi: Cứ khi nào dữ liệu Redux thay đổi hoặc tài khoản khác đăng nhập, tự động map sđt thật vào input ngay!
+  useEffect(() => {
+    if (account) {
+      setUserName(account.user_name || "");
+      setPhone((account as any).phone || "");
+    }
+  }, [account]);
 
   const handleSaveProfile = async () => {
     if (userName.trim() === "") {
       Alert.alert("Lỗi", "Tên tài khoản không được để trống nhen sếp!");
       return;
     }
+    if (phone.trim() === "") {
+      Alert.alert("Lỗi", "Số điện thoại không được để trống nhen sếp!");
+      return;
+    }
+
     try {
       await useCallAPI({
         method: "PUT",
@@ -42,7 +62,7 @@ const ProfileDetail = () => {
         successTitle: "Cập nhật hồ sơ thành công!",
       });
 
-      // 🌟 THẦN CHÚ ĐÂY: Đồng bộ ngược lại Redux để hiển thị lên màn hình ngay lập tức!
+      // 🔥 THẦN CHÚ KHỚP LỆNH: Đồng bộ ngược lại Redux để cập nhật sđt và tên mới lên màn hình ngay lập tức!
       dispatch(updateAuthInfor({ user_name: userName, phone: phone }));
 
       setIsEditing(false);
@@ -96,7 +116,7 @@ const ProfileDetail = () => {
             )}
           </View>
 
-          {/* HÀNG VAI TRÒ */}
+          {/* HÀNG VAI TRÒ ĐƯỢC CHUẨN HÓA THEO ROLE ENUM MỚI */}
           <View style={styles.infoRow}>
             <Text style={styles.label}>Vai trò hệ thống</Text>
             <Text
@@ -106,14 +126,14 @@ const ProfileDetail = () => {
               ]}
             >
               {account?.role === "admin"
-                ? "Chủ cửa hàng (Shop)"
+                ? "Quản trị viên (Admin)"
                 : account?.role === "shipper"
                   ? "Người giao hàng (Shipper)"
-                  : "Khách hàng (Customer)"}
+                  : "Khách hàng (User)"}
             </Text>
           </View>
 
-          {/* CỤM NÚT ĐIỀU KHIỂN NẰM RÕ RÀNG TRONG CARD */}
+          {/* CỤM NÚT ĐIỀU KHIỂN */}
           <View style={{ marginTop: 20 }}>
             {isEditing ? (
               <View style={{ flexDirection: "row", gap: 10 }}>
@@ -122,7 +142,7 @@ const ProfileDetail = () => {
                   onPress={() => {
                     setIsEditing(false);
                     setUserName(account?.user_name || "");
-                    setPhone(account?.phone || "");
+                    setPhone((account as any)?.phone || "");
                   }}
                 >
                   <Text style={{ color: "#4B5563", fontWeight: "600" }}>

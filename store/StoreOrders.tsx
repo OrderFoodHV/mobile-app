@@ -18,6 +18,7 @@ import { useSelector, shallowEqual } from "react-redux";
 import { RootState } from "../src/redux/store";
 import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
+import socket from "../src/app-helper/socketHelper";
 
 const TABS = [
   { id: "pending", label: "Chờ duyệt" },
@@ -38,25 +39,24 @@ const StoreOrders = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const [storeId, setStoreId] = useState<number>(1);
 
-  // 🌟 HÀM KÉO DỮ LIỆU THẬT TỪ DATABASE
   const fetchOrders = async () => {
     if (!storeId || !tokenData) return;
     setLoading(true);
     try {
       const res = await useCallAPI({
         method: "GET",
-        url: `${URL_API}/api/store/${storeId}/orders?status=${activeTab}`,
+        url: `${URL_API}/store/${storeId}/orders?status=${activeTab}`,
         token: tokenData,
       });
 
-      if (res && res.status === "success") {
-        const actualOrders = res.data?.orders || res.data;
+      if (res) {
+        const actualOrders = res.orders || res.data?.orders || res.data || res;
         if (Array.isArray(actualOrders)) {
           setOrders(actualOrders);
         }
       }
     } catch (error) {
-      console.log("Lỗi lấy đơn hàng từ Backend:", error);
+      console.log("Lỗi fetchOrders:", error);
     } finally {
       setLoading(false);
     }
@@ -66,23 +66,45 @@ const StoreOrders = () => {
     fetchOrders();
   }, [activeTab, storeId]);
 
-  // 🌟 RADA QUÉT ĐƠN THẬT TỪ DATABASE MỖI 5 GIÂY
+  // LẮNG NGHE REAL-TIME: Khi shipper bấm nhận đơn, tự động reload lại danh sách
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    if (storeId) {
+      // 🌟 THÊM MỚI CHỖ NÀY: Kích hoạt kết nối bộ đàm báo cho app.js gán Quán vào đúng phòng store_room_1
+      socket.emit("register_store", storeId);
+      console.log(
+        `🔌 Quán đã nối sóng thành công vào phòng: store_room_${storeId}`,
+      );
+    }
+
+    socket.on("order_status_updated", (data) => {
+      if (data.type === "driver_found") {
+        console.log(
+          "🔔 Phát hiện có xế vừa nhận đơn, tự động reload danh sách quán!",
+        );
+        fetchOrders();
+      }
+    });
+    return () => {
+      socket.off("order_status_updated");
+    };
+  }, [activeTab, storeId]); // Thêm storeId vào dependencies
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
     if (activeTab === "pending" && storeId && tokenData) {
       interval = setInterval(async () => {
         try {
           const res = await useCallAPI({
             method: "GET",
-            url: `${URL_API}/api/store/${storeId}/orders?status=pending`,
+            url: `${URL_API}/store/${storeId}/orders?status=pending`,
             token: tokenData,
           });
 
-          if (res && res.status === "success") {
-            const actualOrders = res.data?.orders || res.data;
+          if (res) {
+            const actualOrders =
+              res.orders || res.data?.orders || res.data || res;
             if (Array.isArray(actualOrders)) {
               setOrders((prevOrders) => {
-                // Nếu DB có đơn mới nhiều hơn số đơn đang hiển thị -> Nổ thông báo
                 if (actualOrders.length > prevOrders.length) {
                   Alert.alert(
                     "🔔 CÓ ĐƠN HÀNG MỚI!",
@@ -100,36 +122,78 @@ const StoreOrders = () => {
     return () => clearInterval(interval);
   }, [activeTab, storeId, tokenData]);
 
-  // 🌟 CẬP NHẬT TRẠNG THÁI THẬT LÊN DATABASE
   const handleUpdateStatus = async (orderId: number, newStatus: string) => {
     try {
       const res = await useCallAPI({
         method: "PUT",
-        url: `${URL_API}/api/store/${storeId}/orders/${orderId}/status`,
+        url: `${URL_API}/store/${storeId}/orders/${orderId}/status`,
         token: tokenData,
-        payload: { status: newStatus, note: "Cửa hàng xử lý" },
+        data: { status: newStatus, note: "Cửa hàng xử lý" },
       });
 
       if (res.status === "success" || res.status === 200) {
-        Alert.alert(
-          "Thành công",
-          `Đã chuyển đơn #${orderId} sang trạng thái mới!`,
-        );
-        fetchOrders(); // Kéo lại dữ liệu thật từ DB để UI cập nhật
+        Alert.alert("Thành công", `Đã cập nhật trạng thái đơn thành công!`);
+        fetchOrders();
+
+        // 🌟 ĐÃ CHUYỂN THÀNH CHUỖI TIẾNG VIỆT THEO CHUẨN ĐỂ PHÁT SÓNG SOCKET KHỚP 100%
+        if (newStatus === "Quán đã nhận đơn") {
+          socket.emit("store_accepts", { orderId: orderId });
+          console.log(`Đã phát loa gọi shipper cho đơn ${orderId}`);
+        }
       }
     } catch (error) {
-      console.log("Lỗi cập nhật trạng thái:", error);
-      Alert.alert(
-        "Lỗi",
-        "Không thể duyệt đơn lúc này, sếp kiểm tra lại mạng hoặc Backend nhen.",
-      );
+      Alert.alert("Lỗi", "Không thể duyệt đơn lúc này.");
+    }
+  };
+
+  // 🌟 SỬA ĐÚNG HÀM NÀY: Kết nối trực tiếp API chi tiết của Backend để bóc mảng items và ghi chú Note sạch (Giữ nguyên)
+  const handleShowOrderDetail = async (item: any) => {
+    try {
+      const res = await useCallAPI({
+        method: "GET",
+        url: `${URL_API}/store/${storeId}/orders/${item.id}`,
+        token: tokenData,
+      });
+
+      const detailData = res?.data || res;
+
+      if (detailData) {
+        const foodList =
+          detailData.items
+            ?.map((f: any) => `• ${f.name} (SL: ${f.quantity})`)
+            .join("\n") || "Chưa có thông tin sản phẩm cụ thể.";
+
+        Alert.alert(
+          `CHI TIẾT ĐƠN HÀNG #${detailData.id}`,
+          `👤 Khách hàng: ${detailData.customer_name || `Hội viên #${detailData.user_id}`}\n` +
+            `📞 Số điện thoại: ${detailData.customer_phone || "Chưa cập nhật"}\n` +
+            `📍 Địa chỉ: ${detailData.address}\n` +
+            `📝 Ghi chú từ khách: ${detailData.note || "Khách không có ghi chú gì thêm"}\n\n` +
+            `🍔 DANH SÁCH MÓN ĂN:\n${foodList}\n\n` +
+            `💸 Tổng thanh toán món: ${Number(detailData.total_price).toLocaleString("vi-VN")}đ`,
+          [{ text: "ĐÓNG", style: "cancel" }],
+        );
+      } else {
+        Alert.alert(
+          "Thông báo",
+          "Không thể bóc tách dữ liệu chi tiết của đơn này.",
+        );
+      }
+    } catch (err) {
+      console.log("Lỗi tải chi tiết đơn:", err);
+      Alert.alert("Thông báo", "Hệ thống gặp lỗi khi kết xuất dữ liệu Popup.");
     }
   };
 
   const renderOrderCard = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.orderId}>Đơn #{item.id}</Text>
+        <Text style={styles.orderId}>
+          Đơn #{item.id}
+          {item.status === "Đơn đã bị hủy" && (
+            <Text style={{ color: "#EF4444", fontSize: 13 }}> (Đã hủy)</Text>
+          )}
+        </Text>
         <Text style={styles.time}>
           {new Date(item.created_at).toLocaleTimeString([], {
             hour: "2-digit",
@@ -143,26 +207,43 @@ const StoreOrders = () => {
             <Feather name="user" size={14} />{" "}
             {item.customer_name || `Khách hàng #${item.user_id}`}
           </Text>
-          <Text style={styles.address} numberOfLines={2}>
+          <Text style={styles.address} numberOfLines={1}>
             <Feather name="map-pin" size={14} /> {item.address}
           </Text>
+
+          <View style={styles.foodInlineContainer}>
+            {item.items &&
+              item.items.map((food: any, idx: number) => (
+                <Text key={idx} style={styles.foodInlineText}>
+                  📌 {food.name}{" "}
+                  <Text style={styles.foodQuantityText}>x{food.quantity}</Text>
+                </Text>
+              ))}
+          </View>
         </View>
         <Text style={styles.totalPrice}>
           {Number(item.total_price).toLocaleString("vi-VN")}đ
         </Text>
       </View>
 
+      <TouchableOpacity
+        style={styles.detailBtn}
+        onPress={() => handleShowOrderDetail(item)}
+      >
+        <Text style={styles.detailBtnText}>Xem chi tiết đơn hàng</Text>
+      </TouchableOpacity>
+
       {activeTab === "pending" && (
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.btn, styles.btnReject]}
-            onPress={() => handleUpdateStatus(item.id, "cancelled")}
+            onPress={() => handleUpdateStatus(item.id, "Đơn đã bị hủy")}
           >
             <Text style={styles.btnTextReject}>Từ chối</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btn, styles.btnAccept]}
-            onPress={() => handleUpdateStatus(item.id, "confirmed")}
+            onPress={() => handleUpdateStatus(item.id, "Quán đã nhận đơn")}
           >
             <Text style={styles.btnTextAccept}>Nhận đơn</Text>
           </TouchableOpacity>
@@ -170,12 +251,25 @@ const StoreOrders = () => {
       )}
 
       {activeTab === "confirmed" && (
-        <TouchableOpacity
-          style={[styles.btn, styles.btnAccept, { marginTop: 10 }]}
-          onPress={() => handleUpdateStatus(item.id, "delivering")}
-        >
-          <Text style={styles.btnTextAccept}>Giao cho Tài xế</Text>
-        </TouchableOpacity>
+        <View style={{ width: "100%" }}>
+          {!item.shipper_id ? (
+            <View style={styles.waitingDriverBox}>
+              <ActivityIndicator size="small" color="#D97706" />
+              <Text style={styles.waitingDriverText}>
+                Đang quét radar tìm tài xế gần đây...
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.btn, styles.btnAccept, { marginTop: 5 }]}
+              onPress={() => handleUpdateStatus(item.id, "Đang giao hàng")}
+            >
+              <Text style={styles.btnTextAccept}>
+                Giao cho Tài xế (Xế đã nhận đơn)
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </View>
   );
@@ -192,7 +286,6 @@ const StoreOrders = () => {
           </TouchableOpacity>
         </View>
       </View>
-
       <View style={styles.tabContainer}>
         {TABS.map((tab) => (
           <TouchableOpacity
@@ -211,7 +304,6 @@ const StoreOrders = () => {
           </TouchableOpacity>
         ))}
       </View>
-
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -277,9 +369,9 @@ const styles = StyleSheet.create({
   time: { color: "#9CA3AF", fontSize: 12 },
   cardBody: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-between", // 🌟 ĐÃ SỬA LỖI TẠI ĐÂY: Thay thế từ khóa lỗi 'justify Sukho' bằng 'justifyContent'
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 12,
   },
   customerName: { fontSize: 15, fontWeight: "600", color: "#1F2937" },
   address: { fontSize: 13, color: "#6B7280", marginTop: 4 },
@@ -302,6 +394,38 @@ const styles = StyleSheet.create({
   btnTextAccept: { color: "#fff", fontWeight: "bold" },
   emptyView: { alignItems: "center", marginTop: 100 },
   emptyText: { marginTop: 10, color: "#9CA3AF", fontSize: 15 },
+  foodInlineContainer: {
+    marginTop: 6,
+    backgroundColor: "#F9FAFB",
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  foodInlineText: { fontSize: 13, color: "#4B5563", marginVertical: 1 },
+  foodQuantityText: { fontWeight: "bold", color: "#F97316" },
+  detailBtn: {
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  detailBtnText: { color: "#6B7280", fontSize: 13, fontWeight: "500" },
+  waitingDriverBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFBEB",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    gap: 8,
+    marginTop: 5,
+  },
+  waitingDriverText: { color: "#D97706", fontWeight: "600", fontSize: 13 },
 });
-
 export default StoreOrders;

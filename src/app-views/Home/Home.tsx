@@ -4,7 +4,7 @@ import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
 import { useEffect, useState } from "react";
-import { TouchableOpacity, View, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
 import { Feather, AntDesign } from "@expo/vector-icons";
 import ListProductTabBar from "./components/ListProductTabBar";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
@@ -13,6 +13,11 @@ import { AppDispatch, RootState } from "@redux/store";
 import { getCartData } from "@redux/features/cartSlice";
 import React from "react";
 import { useAppTheme } from "src/app-context/ThemeContext";
+// 1. Xóa chữ SafeAreaView ở 'react-native' đi
+import { View, Text } from "react-native";
+
+// 2. Import SafeAreaView mới từ thư viện vừa cài ở ngay phía dưới
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface HomeProps {}
 const Home: React.FC<HomeProps> = () => {

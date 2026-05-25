@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { Alert } from "react-native";
 import { useSelector, shallowEqual } from "react-redux";
 
-import { RootState } from "../../redux/store";
+import { RootState } from "src/redux/store";
 import useCallAPI from "../../src/app-helper/useCallAPI";
 import URL_API from "../../src/app-helper/urlAPI";
 import colors from "../../src/assets/colors/global_colors";
@@ -33,7 +33,7 @@ export default function StoreBottomContainer() {
       try {
         const res = await useCallAPI({
           method: "GET",
-          url: `${URL_API}/api/store/${storeId}/orders?status=pending`,
+          url: `${URL_API}/store/${storeId}/orders?status=pending`,
           token: tokenData,
         });
 

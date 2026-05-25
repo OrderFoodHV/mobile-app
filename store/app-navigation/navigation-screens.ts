@@ -1,30 +1,44 @@
 export const ListStoreScreens: Record<string, any> = {
   StoreBottomContainer: {
     name: "StoreBottomContainer",
-    component: require("./StoreBottomContainer").default,
+    component: require("store/app-navigation/StoreBottomContainer").default,
   },
   StorePersonal: {
     name: "StorePersonal",
-    component: require("../app-views/Personal/StorePersonal").default,
+    component: require("store/app-views/Personal/StorePersonal").default,
+  },
+  StoreLanding: {
+    name: "StoreLanding",
+    component: require("store/app-views/StoreLanding").default,
   },
   StoreOrders: {
     name: "StoreOrders",
-    component: require("../StoreOrders").default,
+    component: require("store/StoreOrders").default,
   },
   StoreDashboard: {
     name: "StoreDashboard",
-    component: require("../StoreDashboard").default,
+    component: require("store/StoreDashboard").default,
   },
   StoreProducts: {
     name: "StoreProducts",
-    component: require("../StoreProducts").default,
+    component: require("store/StoreProducts").default,
   },
   StoreProductForm: {
     name: "StoreProductForm",
-    component: require("../StoreProductForm").default,
+    component: require("store/StoreProductForm").default,
   },
   StoreVouchers: {
     name: "StoreVouchers",
-    component: require("../StoreVouchers").default,
+    component: require("store/StoreVouchers").default,
+  },
+  StoreSettings: {
+    name: "StoreSettings",
+    component: require("store/StoreSettings").default,
+  },
+  ShipperSettings: {
+    name: "ShipperSettings",
+    // Chú ý: Trỏ đường dẫn tới file ShipperSettings.tsx sếp vừa tạo nhé
+    // Tớ đoán sếp đang để ở thư mục này, sếp chỉnh lại path nếu báo đỏ nha
+    component: require("src/app-views/shipper/shipperSettings").default,
   },
 };

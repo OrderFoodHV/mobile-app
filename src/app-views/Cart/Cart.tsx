@@ -51,6 +51,9 @@ const Cart: React.FC = () => {
   const [triggerResetData, setTriggerResetData] = useState<boolean>(false);
   const [cartItems, setCartItems] = useState<ProductCartData[]>([]);
 
+  // 🌟 THÊM MỚI STATE: Quản lý chữ ghi chú khách hàng gõ vào
+  const [orderNote, setOrderNote] = useState<string>("");
+
   const toggleSelection = (item: ProductCartData) => {
     setCartItems((prevCartItems) => {
       const safeItems = prevCartItems || [];
@@ -119,7 +122,7 @@ const Cart: React.FC = () => {
 
   const DEBOUNCE_TIME = 300;
   const [pendingUpdate, setPendingUpdate] = useState<any>(null);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onUpdateProductQuantity = ({
     cart_id,
@@ -173,7 +176,6 @@ const Cart: React.FC = () => {
     }
   }, [increaseProductQuantityInCartResponse]);
 
-  // 💰 TÍNH TỔNG TIỀN ĐỘNG TRÊN CÁC MÓN ĐÃ CHECK BOX (CHỐNG CRASH)
   const totalSelectedPrice = (cartItems || []).reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
     0,
@@ -193,9 +195,11 @@ const Cart: React.FC = () => {
         total_price: Number(item.price) * Number(item.quantity),
       }));
 
+      // 🌟 SỬA ĐỒNG BỘ: Truyền kèm trường 'note' gõ từ UI vào luồng điều hướng goToOrder
       goToOrder({
         products: formattedProducts,
         type: "cart",
+        note: orderNote || "",
       });
     } else {
       Alert.alert(
@@ -309,8 +313,18 @@ const Cart: React.FC = () => {
         )}
       />
 
-      {/* FOOTER HIỂN THỊ TỔNG TIỀN CHUẨN ĐÉT GRABFOOD */}
       <Footer style={styles.footerContainer}>
+        {/* 🌟 THÊM MỚI: Ô NHẬP GHI CHÚ TỰ DO CHO KHÁCH HÀNG (DẠNG OPTIONAL) */}
+        <View style={styles.noteWrapper}>
+          <TextInput
+            style={styles.noteInput}
+            placeholder="Ghi chú cho cửa hàng (Ví dụ: Ít cay, không hành...)"
+            placeholderTextColor="#9CA3AF"
+            value={orderNote}
+            onChangeText={setOrderNote}
+          />
+        </View>
+
         <View style={styles.priceRow}>
           <Text style={styles.priceLabel}>
             Tạm tính ({(cartItems || []).length} món):
@@ -373,6 +387,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
+  },
+  // 🌟 STYLE THÊM MỚI CỦA Ô NHẬP GHI CHÚ:
+  noteWrapper: {
+    marginBottom: 10,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  noteInput: {
+    fontSize: 13,
+    color: "#111827",
+    paddingVertical: 6,
   },
   priceRow: {
     flexDirection: "row",

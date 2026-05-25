@@ -23,6 +23,7 @@ const initialState: OrderProps = {
   orderLoading: false,
 };
 
+// 🔥 SỬA LỖI TRẮNG MÀN HÌNH DANH SÁCH ĐƠN HÀNG
 export const getOrderListData = createAsyncThunk(
   "get/orderData",
   async (data: GetOrderFilterParams) => {
@@ -32,11 +33,23 @@ export const getOrderListData = createAsyncThunk(
       token: data.token,
     });
 
-    if (response?.success === false) {
-      return response;
+    // Bắt lỗi chuẩn hơn: Dù Backend trả về success = false hay status = error
+    if (response?.success === false || response?.status === "error") {
+      return {
+        success: false,
+        message: response?.message || "Lỗi tải lịch sử",
+      };
     }
 
-    const orders = Array.isArray(response) ? response.map(normalizeOrder) : [];
+    // 🔥 BÙA BỐC DỮ LIỆU CHUẨN: Lục tung response để tìm mảng đơn hàng
+    // Vì Backend gửi res.json({ status: "success", data: orders })
+    let rawOrders = [];
+    if (Array.isArray(response)) rawOrders = response;
+    else if (Array.isArray(response?.data)) rawOrders = response.data;
+    else if (Array.isArray(response?.data?.data))
+      rawOrders = response.data.data;
+
+    const orders = rawOrders.map(normalizeOrder);
 
     return {
       success: true,
@@ -54,13 +67,21 @@ export const getOrderItemsData = createAsyncThunk(
       token: data.token,
     });
 
-    if (response?.success === false) {
-      return response;
+    if (response?.success === false || response?.status === "error") {
+      return {
+        success: false,
+        message: response?.message || "Lỗi tải chi tiết",
+      };
     }
+
+    // Tương tự, bốc dữ liệu linh hoạt
+    let rawItems = [];
+    if (Array.isArray(response)) rawItems = response;
+    else if (Array.isArray(response?.data)) rawItems = response.data;
 
     return {
       success: true,
-      data: Array.isArray(response) ? normalizeOrderItems(response) : [],
+      data: rawItems.map(normalizeOrderItems),
     };
   },
 );
@@ -68,25 +89,21 @@ export const getOrderItemsData = createAsyncThunk(
 export const createOrder = createAsyncThunk(
   "post/createOrder",
   async ({ data, token }: any) => {
-    // 1. Gửi ĐẦY ĐỦ mâm cỗ dữ liệu lên Backend
     const response = await useCallAPI({
       method: "POST",
       url: `${URL_API}/orders/create`,
-      data: data, // 👉 ĐẢM BẢO LÀ data (truyền cả cục), KHÔNG ĐƯỢC VIẾT data: { address: data.address } nhen sếp!
+      data: data,
       token: token,
     });
 
-    // 2. Trả dữ liệu về cho Redux xử lý (Đoạn sếp bị cắt ngắn ở dòng 81)
+    // Ép trả về kết quả có order_id chuẩn
+    const resultData = response?.result || response?.data || response;
     return {
       success: true,
-      message: response?.message || "Đặt hàng thành công",
-      // Bao lô mọi trường hợp Backend trả về cục dữ liệu đơn hàng mới tạo
-      result: normalizeOrder(
-        response?.data?.result ||
-          response?.result ||
-          response?.data ||
-          response,
-      ),
+      result: {
+        ...resultData,
+        order_id: resultData.order_id || resultData.id || response.order_id, // Đảm bảo luôn có order_id
+      },
     };
   },
 );

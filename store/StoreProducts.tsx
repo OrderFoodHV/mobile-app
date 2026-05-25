@@ -292,7 +292,7 @@ const StoreProducts = () => {
     try {
       const res = await useCallAPI({
         method: "GET",
-        url: `${URL_API}/api/store/${storeId}/products`,
+        url: `${URL_API}/store/${storeId}/products`,
         token: tokenData,
       });
       // Nếu gọi API bốc từ DB lên thành công và có data thật thì ưu tiên hiển thị dữ liệu DB
@@ -329,7 +329,7 @@ const StoreProducts = () => {
     try {
       await useCallAPI({
         method: "PUT",
-        url: `${URL_API}/api/store/${storeId}/products/${productId}/toggle`,
+        url: `${URL_API}/store/${storeId}/products/${productId}/toggle`,
         token: tokenData,
       });
     } catch (error) {

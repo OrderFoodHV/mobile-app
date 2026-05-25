@@ -17,7 +17,7 @@ const initialState: AuthProps = {
   tokenData: null,
   authError: null,
   authLoading: false,
-};
+} as any;
 
 const mapLoginResponse = (response: any, password?: string) => {
   if (!response?.access_token || !response?.user) {
@@ -30,9 +30,12 @@ const mapLoginResponse = (response: any, password?: string) => {
   return {
     success: true,
     message: response?.message || "Login success",
-    user_name: response.user.name,
+    user_name: response.user.user_name || response.user.name,
     email: response.user.email,
     role: response.user.role,
+    phone: response.user.phone,
+    is_shipper: response.user.is_shipper || 0, // Đón cờ shipper
+    is_seller: response.user.is_seller || 0, // Đón cờ seller
     token: response.access_token,
     refresh_token: response.refresh_token,
     user_avatar: "",
@@ -42,15 +45,17 @@ const mapLoginResponse = (response: any, password?: string) => {
 };
 
 const persistAuthData = async (payload: any) => {
-  const accountData: AccountData & { password?: string } = {
+  const accountData: any = {
     user_name: payload?.user_name,
     email: payload?.email,
     role: payload?.role,
+    phone: payload?.phone,
+    is_shipper: payload?.is_shipper, // Nhớ lưu xuống bộ nhớ
+    is_seller: payload?.is_seller, // Nhớ lưu xuống bộ nhớ
     password: payload?.password,
   };
 
   await saveObjectDataToStorage(KEY_STORAGE.ACCOUNT_DATA, accountData);
-
   await saveObjectDataToStorage(KEY_STORAGE.USER_TOKEN, payload?.token);
 };
 
@@ -77,14 +82,16 @@ export const loginAccount = createAsyncThunk(
 export const registerAccount = createAsyncThunk(
   "post/registerAccount",
   async (data: RegisterSendData) => {
+    const safeData = data as any;
+
     const response = await useCallAPI({
       method: "POST",
       url: `${URL_API}/auth/register`,
       data: {
-        name: data.name || data.user_name,
-        email: data.email,
-        password: data.password,
-        phone: data.phone,
+        name: safeData.name || safeData.user_name,
+        email: safeData.email,
+        password: safeData.password,
+        phone: safeData.phone,
       },
       showToast: false,
     });
@@ -111,24 +118,50 @@ const authSlice = createSlice({
       state.authError = null;
       state.authLoading = false;
     },
-    updateAuthInfor: (state: any, action: any) => {
+
+    updateAuthInfor: (state: any, action: PayloadAction<any>) => {
       if (state.account) {
-        // Ép kiểu cục bộ sang any để tự do thêm trường phone mà không sợ TypeScript bắt bẻ
-        const safeAccount = state.account as any;
-        state.account.user_name = action.payload.user_name;
-        state.account.phone = action.payload.phone;
+        state.account = {
+          ...state.account, // Giữ nguyên các data cũ
+          // Cập nhật đè dữ liệu mới nếu có truyền vào
+          user_name: action.payload.user_name || state.account.user_name,
+          name: action.payload.name || state.account.name, // Thêm dòng này để phòng sếp dùng chữ 'name'
+          phone: action.payload.phone || state.account.phone,
+          is_shipper: action.payload.is_shipper ?? state.account.is_shipper,
+          is_seller: action.payload.is_seller ?? state.account.is_seller,
+
+          address: action.payload.address || state.account.address, // Dành cho Store
+          vehicle: action.payload.vehicle || state.account.vehicle, // Dành cho Shipper
+          license_plate:
+            action.payload.license_plate || state.account.license_plate, // Shipper
+          avatar: action.payload.avatar || state.account.avatar, // Ảnh đại diện dùng chung
+        };
       }
     },
 
     hydrateAuth: (
-      state,
+      state: any,
       action: PayloadAction<{
         account: AccountData | null;
         token: string | null;
       }>,
     ) => {
-      state.account = action.payload.account;
       state.tokenData = action.payload.token;
+
+      if (action.payload.account) {
+        const localAccount = action.payload.account as any;
+
+        state.account = {
+          user_name: localAccount.user_name,
+          email: localAccount.email,
+          role: localAccount.role,
+          phone: localAccount.phone || "0123456789",
+          is_shipper: localAccount.is_shipper || 0, // 🔥 PHỤC HỒI CỜ SHIPPER TỪ BỘ NHỚ
+          is_seller: localAccount.is_seller || 0, // 🔥 PHỤC HỒI CỜ SELLER TỪ BỘ NHỚ
+        };
+      } else {
+        state.account = null;
+      }
     },
 
     resetAllAuth: (state) => {
@@ -143,24 +176,26 @@ const authSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-
-      // LOGIN
       .addCase(loginAccount.pending, (state) => {
         state.authLoading = true;
         state.authError = null;
       })
 
-      .addCase(loginAccount.fulfilled, (state, action) => {
+      .addCase(loginAccount.fulfilled, (state: any, action) => {
         state.authLoading = false;
         state.loginResponse = action.payload;
 
         if (action.payload?.success) {
           const payload: any = action.payload;
+          state.user = payload.user;
 
           state.account = {
             user_name: payload.user_name,
             email: payload.email,
             role: payload.role,
+            phone: payload.phone || "0123456789",
+            is_shipper: payload.is_shipper || 0, // 🔥 LƯU VÀO STATE SAU KHI LOGIN
+            is_seller: payload.is_seller || 0, // 🔥 LƯU VÀO STATE SAU KHI LOGIN
           };
 
           state.tokenData = payload.token;
@@ -176,7 +211,6 @@ const authSlice = createSlice({
         state.authError = action.error.message || "Login failed";
       })
 
-      // REGISTER
       .addCase(registerAccount.pending, (state) => {
         state.authLoading = true;
         state.authError = null;

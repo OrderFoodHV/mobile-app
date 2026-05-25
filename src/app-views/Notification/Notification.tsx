@@ -9,12 +9,15 @@ import {
 } from "react-native";
 import HeaderApp from "@app-components/HeaderApp/HeaderApp";
 import { Container, Content } from "@app-layout/Layout";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import colors from "@assets/colors/global_colors";
 import { useSelector, shallowEqual } from "react-redux";
 import { RootState } from "@redux/store";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
+
+// 🌟 THÊM MỚI: Import Socket để trang thông báo tự động nổ thông báo thời gian thực
+import socket from "@app-helper/socketHelper";
 
 const Notification: React.FC = () => {
   const { tokenData } = useSelector(
@@ -25,7 +28,6 @@ const Notification: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 🚀 GỌI API THẬT LẤY THÔNG BÁO TỪ BACKEND MYSQL
   const fetchNotifications = async () => {
     if (!tokenData) return;
     setLoading(true);
@@ -47,6 +49,20 @@ const Notification: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
+
+    // 🌟 THÊM MỚI: Lắng nghe tín hiệu Real-time từ hàm createNotification của Backend đẩy sang
+    socket.on("receive_notification", (newNoti) => {
+      console.log(
+        "🔔 TRANG NOTIFICATION USER ĐÃ HỨNG THÀNH CÔNG THÔNG BÁO:",
+        newNoti,
+      );
+      // Đẩy thông báo mới chèn lên đầu danh sách ngay lập tức
+      setNotifications((prev) => [newNoti, ...prev]);
+    });
+
+    return () => {
+      socket.off("receive_notification");
+    };
   }, [tokenData]);
 
   const onRefresh = async () => {
@@ -77,7 +93,7 @@ const Notification: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            scrollEnabled={false}
+            // 🌟 ĐÃ XÓA KHÓA SCROLL để sếp tự do vuốt xem toàn bộ danh sách thông báo lịch sử
             renderItem={({ item }) => (
               <View
                 style={[
@@ -86,7 +102,7 @@ const Notification: React.FC = () => {
                 ]}
               >
                 <View style={styles.iconWrapper}>
-                  {item.type === "order" ? (
+                  {item.type === "order" || item.type === "order_status" ? (
                     <Feather
                       name="shopping-bag"
                       size={20}
@@ -105,12 +121,21 @@ const Notification: React.FC = () => {
                   >
                     {item.title}
                   </Text>
+                  {/* 🌟 ĐÃ KHỚP LẠI BIẾN: Đọc đúng cột content hoặc message lịch sử từ DB */}
                   <Text style={styles.notiBody}>
-                    {item.comment_text || item.body}
+                    {item.content ||
+                      item.message ||
+                      item.comment_text ||
+                      item.body}
                   </Text>
                   <Text style={styles.notiTime}>
                     {item.created_at
-                      ? new Date(item.created_at).toLocaleDateString()
+                      ? new Date(item.created_at).toLocaleDateString("vi-VN") +
+                        " - " +
+                        new Date(item.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : ""}
                   </Text>
                 </View>

@@ -1,3 +1,4 @@
+// src/app-helper/apiAdapters.ts
 import { domain } from "./urlAPI";
 
 type ProductFilter = {
@@ -9,9 +10,9 @@ type ProductFilter = {
 };
 
 const CATEGORY_BY_ID: Record<string, string> = {
-  "1": "fast_food",
-  "2": "drinks",
-  "3": "snacks",
+  "1": "snacks",
+  "2": "fast_food",
+  "3": "drinks",
 };
 
 export const normalizeImageUrl = (image?: string | null) => {
@@ -24,11 +25,9 @@ export const inferCategory = (product: any) => {
   if (typeof product?.category === "string" && product.category.trim()) {
     return product.category.trim().toLowerCase();
   }
-
   if (product?.category_id != null) {
     return CATEGORY_BY_ID[String(product.category_id)] || "other";
   }
-
   return "other";
 };
 
@@ -43,6 +42,8 @@ export const normalizeProduct = (product: any) => {
     image: normalizeImageUrl(product?.image),
     price: Number.isNaN(normalizedPrice) ? 0 : normalizedPrice,
     description: product?.description ?? "",
+    // 🔥 Đã thêm available để khớp DB mới
+    available: product?.available === 1 || product?.available === true,
   };
 };
 
@@ -61,7 +62,12 @@ export const filterProducts = (products: any[], params: ProductFilter) => {
     filtered = filtered.filter((item) => item.category === type);
   }
 
-  if (filterColumn && filterValue !== undefined && filterValue !== null && String(filterValue).trim() !== "") {
+  if (
+    filterColumn &&
+    filterValue !== undefined &&
+    filterValue !== null &&
+    String(filterValue).trim() !== ""
+  ) {
     const keyword = String(filterValue).trim().toLowerCase();
 
     filtered = filtered.filter((item) => {
@@ -92,7 +98,10 @@ export const normalizeCartItems = (items: any[]) => {
 
 export const buildCartSummary = (items: any[]) => {
   const normalizedItems = normalizeCartItems(items);
-  const totalPrice = normalizedItems.reduce((sum, item) => sum + Number(item.total_price ?? 0), 0);
+  const totalPrice = normalizedItems.reduce(
+    (sum, item) => sum + Number(item.total_price ?? 0),
+    0,
+  );
 
   return {
     id: 1,

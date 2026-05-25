@@ -1,3 +1,4 @@
+// src/redux/features/productListSlice.ts
 import { filterProducts } from "@app-helper/apiAdapters";
 import URL_API from "@app-helper/urlAPI";
 import useCallAPI from "@app-helper/useCallAPI";
@@ -93,10 +94,18 @@ const productListSlice = createSlice({
         state.productListLoading = false;
 
         const { type } = action.meta.arg || {};
-        const payloadData = Array.isArray(action.payload?.data) ? action.payload.data : [];
+
+        // 🔥 LỌC LẠI DỮ LIỆU: Chỉ lấy những món có available: true
+        const rawData = Array.isArray(action.payload?.data)
+          ? action.payload.data
+          : [];
+        const payloadData = rawData.filter(
+          (item: any) => item.available === true,
+        );
 
         if (!action.payload?.success) {
-          state.productListError = action.payload?.message || "Failed to fetch products";
+          state.productListError =
+            action.payload?.message || "Failed to fetch products";
           return;
         }
 
@@ -116,9 +125,10 @@ const productListSlice = createSlice({
           state.hasFetchedPaginationProductTypeSnacks = true;
         } else if (type === "fast_food") {
           state.hasMorePaginationProductTypeFastFood = payloadData.length >= 10;
-          state.paginationProductTypeFastFood = state.paginationProductTypeFastFood
-            ? [...state.paginationProductTypeFastFood, ...payloadData]
-            : payloadData;
+          state.paginationProductTypeFastFood =
+            state.paginationProductTypeFastFood
+              ? [...state.paginationProductTypeFastFood, ...payloadData]
+              : payloadData;
           state.currentPagePaginationProductTypeFastFood += 1;
           state.hasFetchedPaginationProductTypeFastFood = true;
         } else if (type === "drinks") {

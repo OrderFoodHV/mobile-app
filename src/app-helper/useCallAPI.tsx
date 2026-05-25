@@ -1,11 +1,10 @@
 import showToastApp from "@app-components/CustomToast/ShowToastApp";
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, Method } from "axios";
 
 const defaultHeaderApplicationJson = { "Content-Type": "application/json" };
 const defaultHeadersFormData = { "Content-Type": "multipart/form-data" };
 
 type TypeHeaders = "application/json" | "multipart/form-data";
-type Method = "GET" | "POST" | "PUT" | "DELETE";
 
 type UseCallAPIProps = {
   method: Method;
@@ -60,7 +59,6 @@ const useCallAPI = async ({
       });
     }
 
-    // Nếu backend trả về { status, data: [...] } thì bóc luôn lõi ra
     return response?.data?.data || response?.data;
   } catch (error: any) {
     console.log(`Error with ${method} request to ${url}:`, error);

@@ -72,7 +72,7 @@ const StoreProductForm = () => {
         // CẬP NHẬT MÓN CŨ
         await useCallAPI({
           method: "PUT",
-          url: `${URL_API}/api/store/${storeId}/products/${editProduct.id}`,
+          url: `${URL_API}/store/${storeId}/products/${editProduct.id}`,
           token: tokenData,
           payload,
         });
@@ -81,7 +81,7 @@ const StoreProductForm = () => {
         // THÊM MÓN MỚI
         await useCallAPI({
           method: "POST",
-          url: `${URL_API}/api/store/${storeId}/products`,
+          url: `${URL_API}/store/${storeId}/products`,
           token: tokenData,
           payload,
         });

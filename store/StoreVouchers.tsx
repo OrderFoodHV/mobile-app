@@ -35,7 +35,7 @@ const StoreVouchers = () => {
     try {
       const res = await useCallAPI({
         method: "GET",
-        url: `${URL_API}/api/store/${storeId}/vouchers`,
+        url: `${URL_API}/store/${storeId}/vouchers`,
         token: tokenData,
       });
       if (res && res.data) setVouchers(res.data);
@@ -60,7 +60,7 @@ const StoreVouchers = () => {
     try {
       await useCallAPI({
         method: "PUT",
-        url: `${URL_API}/api/store/${storeId}/vouchers/${voucherId}/toggle`,
+        url: `${URL_API}/store/${storeId}/vouchers/${voucherId}/toggle`,
         token: tokenData,
       });
     } catch (error) {
@@ -79,7 +79,7 @@ const StoreVouchers = () => {
           try {
             await useCallAPI({
               method: "DELETE",
-              url: `${URL_API}/api/store/${storeId}/vouchers/${voucherId}`,
+              url: `${URL_API}/store/${storeId}/vouchers/${voucherId}`,
               token: tokenData,
             });
             fetchVouchers();

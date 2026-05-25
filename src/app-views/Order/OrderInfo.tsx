@@ -1,45 +1,94 @@
+import React, { useEffect } from "react";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
 import { Container, Content, Footer } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import { useRoute } from "@react-navigation/native";
-import { createOrder, resetCreateOrderResponse, resetOrderListData } from "@redux/features/orderSlice";
+import {
+  createOrder,
+  resetCreateOrderResponse,
+  resetOrderListData,
+} from "@redux/features/orderSlice";
 import { AppDispatch, RootState } from "@redux/store";
-import { useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 
 const OrderInfo: React.FC = () => {
   const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
-  const { goToOrderDetail } = useNavigationComponentApp()
+  const { goToOrderDetail } = useNavigationComponentApp();
   const { data } = route.params ?? {}; // mảng sản phẩm
-  const { createOrderResponse } = useSelector((state: RootState) => state.order, shallowEqual)
-  const { tokenData } = useSelector((state: RootState) => state.auth, shallowEqual)
-  console.log('datassss', JSON.stringify(data))
+  const { createOrderResponse } = useSelector(
+    (state: RootState) => state.order,
+    shallowEqual,
+  );
+  const { tokenData } = useSelector(
+    (state: RootState) => state.auth,
+    shallowEqual,
+  );
+  console.log("datassss", JSON.stringify(data));
 
   const handleSend = () => {
     if (tokenData && data) {
-      dispatch(createOrder({ data: data, token: tokenData }))
+      dispatch(createOrder({ data: data, token: tokenData }));
     }
-  }
+  };
 
   useEffect(() => {
-    if (createOrderResponse?.success && createOrderResponse?.result) {
-      dispatch(resetOrderListData())
-      goToOrderDetail({ data: { ...createOrderResponse?.result, id: createOrderResponse?.result?.order_id, trigger: true } })
-      dispatch(resetCreateOrderResponse())
+    if (createOrderResponse?.success) {
+      dispatch(resetOrderListData());
+
+      const resData =
+        createOrderResponse?.result || createOrderResponse?.data || {};
+
+      // Bóc tách ID an toàn tuyệt đối
+      const rawId = resData?.order_id || resData?.id;
+      const validId =
+        rawId?.insertId ||
+        rawId?.id ||
+        (Array.isArray(rawId) ? rawId[0] : rawId) ||
+        "Đang cập nhật";
+
+      // Tính dự phòng tổng tiền nếu bị khuyết
+      const fallbackTotal = data?.items?.reduce(
+        (sum: number, item: any) =>
+          sum + Number(item.price || 0) * Number(item.quantity || 0),
+        0,
+      );
+
+      // Gói ghém cẩn thận toàn bộ dữ liệu bắn sang màn Tracking
+      goToOrderDetail({
+        data: {
+          ...data, // Giữ lại toàn bộ giỏ hàng (items, address...)
+          ...resData, // Ghi đè dữ liệu BE trả về
+          id: validId,
+          order_id: validId,
+          order_status: "pending", // Ép cứng trạng thái lúc vừa đặt xong
+          total_price:
+            resData?.total_price || data?.total_price || fallbackTotal,
+          created_at: new Date().toISOString(), // Lấy giờ hiện tại
+          trigger: true,
+        },
+      });
+
+      dispatch(resetCreateOrderResponse());
     }
-  }, [createOrderResponse])
+  }, [createOrderResponse]);
 
   return (
     <Container>
       <HeaderCustom
-        title={'Thông tin đơn hàng'}
-        rightIcon={
-          <View style={{ flex: 1 }}></View>
-        } />
+        title={"Thông tin đơn hàng"}
+        rightIcon={<View style={{ flex: 1 }}></View>}
+      />
       <Content>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Địa chỉ giao hàng */}
@@ -53,11 +102,18 @@ const OrderInfo: React.FC = () => {
             <Text style={styles.sectionTitle}>Thông tin sản phẩm</Text>
             {data?.items?.map((product: any) => (
               <View key={product.id} style={styles.productContainer}>
-                <Image source={{ uri: product?.image }} style={styles.productImage} />
+                <Image
+                  source={{ uri: product?.image }}
+                  style={styles.productImage}
+                />
                 <View style={styles.productDetails}>
                   <Text style={styles.productName}>{product?.name}</Text>
-                  <Text style={styles.productPrice}>{product?.price?.toLocaleString()}</Text>
-                  <Text style={styles.productQuantity}>Số lượng: {product?.quantity}</Text>
+                  <Text style={styles.productPrice}>
+                    {product?.price?.toLocaleString()}
+                  </Text>
+                  <Text style={styles.productQuantity}>
+                    Số lượng: {product?.quantity}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -72,18 +128,15 @@ const OrderInfo: React.FC = () => {
           {/* Tổng tiền */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tổng tiền</Text>
-            <Text style={styles.totalText}>{data?.total_price?.toLocaleString()}đ</Text>
+            <Text style={styles.totalText}>
+              {data?.total_price?.toLocaleString()}đ
+            </Text>
           </View>
-
-
         </ScrollView>
       </Content>
       <Footer>
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.orderButton}
-            onPress={handleSend}
-          >
+          <TouchableOpacity style={styles.orderButton} onPress={handleSend}>
             <Text style={styles.orderButtonText}>Xác nhận</Text>
           </TouchableOpacity>
         </View>

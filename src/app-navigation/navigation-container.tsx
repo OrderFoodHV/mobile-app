@@ -1,9 +1,19 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import StoreLanding from "store/app-views/StoreLanding";
 
-import { ListStackScreens } from "./navigation-screens"; // Danh sách màn hình của Khách
-import { ListStoreScreens } from "../../store/app-navigation/navigation-screens"; // Danh sách màn hình của Shop nạp từ bên ngoài sang
+// 1. Danh sách màn hình của Khách
+import { ListStackScreens } from "src/app-navigation/navigation-screens";
+
+// 2. 🌟 IMPORT THÊM DANH SÁCH MÀN HÌNH CỦA CỬA HÀNG (Sửa đường dẫn nếu báo đỏ nhé)
+import { ListStoreScreens } from "store/app-navigation/navigation-screens";
+
+// 3. 🌟 GỘP CẢ 2 MODULE LẠI THÀNH 1 DANH SÁCH TỔNG
+const AllScreens = {
+  ...ListStackScreens,
+  ...ListStoreScreens, // Nhét cục này vào thì StoreVouchers mới được đăng ký!
+};
 
 const Stack = createNativeStackNavigator();
 
@@ -14,19 +24,10 @@ export default function AppNavigator() {
         initialRouteName="Splash"
         screenOptions={{ headerShown: false }}
       >
-        {/* 1. Tự động nạp toàn bộ màn hình của Khách */}
-        {Object.values(ListStackScreens).map((screen, index) => (
+        {/* Bây giờ mình map cái AllScreens tổng, nó sẽ chứa đủ 100% màn hình */}
+        {Object.values(AllScreens).map((screen: any) => (
           <Stack.Screen
-            key={`customer-${index}`}
-            name={screen.name}
-            component={screen.component}
-          />
-        ))}
-
-        {/* 2. Tự động nạp toàn bộ màn hình của Shop từ folder riêng biệt */}
-        {Object.values(ListStoreScreens).map((screen, index) => (
-          <Stack.Screen
-            key={`store-${index}`}
+            key={screen.name}
             name={screen.name}
             component={screen.component}
           />

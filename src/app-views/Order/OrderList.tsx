@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
 import { formatDate } from "@app-helper/utilities";
@@ -9,7 +10,6 @@ import {
   resetOrderListData,
 } from "@redux/features/orderSlice";
 import { AppDispatch, RootState } from "@redux/store";
-import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useAppTheme } from "src/app-context/ThemeContext";
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ xác nhận",
   cooking: "Đang chế biến",
@@ -31,9 +32,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Đã hủy",
 };
 
-interface OrderListProps {}
-
-const OrderList: React.FC<OrderListProps> = () => {
+const OrderList: React.FC = () => {
   const { themeColors } = useAppTheme();
   const dispatch = useDispatch<AppDispatch>();
   const route = useRoute<any>();
@@ -47,24 +46,20 @@ const OrderList: React.FC<OrderListProps> = () => {
     orderLoading,
     paginationOrderListData,
   } = useSelector((state: RootState) => state.order, shallowEqual);
+
   const { tokenData } = useSelector(
     (state: RootState) => state.auth,
     shallowEqual,
   );
 
   const [refreshing, setRefreshing] = useState(false);
-  const [triggerResetData, setTriggerResetData] = useState(false);
 
+  // Lấy dữ liệu lần đầu
   useEffect(() => {
-    if (trigger) dispatch(resetOrderListData());
-  }, [trigger]);
-
-  useEffect(() => {
-    if (!hasFetchedPaginationOrderListData && !triggerResetData && tokenData) {
+    if (!hasFetchedPaginationOrderListData && tokenData) {
       dispatch(getOrderListData({ page: 1, limit: 10, token: tokenData }));
-      setTriggerResetData(true);
     }
-  }, [hasFetchedPaginationOrderListData, triggerResetData, tokenData]);
+  }, [hasFetchedPaginationOrderListData, tokenData, dispatch]);
 
   const handleLoadMore = () => {
     if (hasMorePaginationOrderListData && !orderLoading && tokenData) {
@@ -81,7 +76,9 @@ const OrderList: React.FC<OrderListProps> = () => {
   const onRefreshData = () => {
     setRefreshing(true);
     dispatch(resetOrderListData());
-    setTriggerResetData(false);
+    if (tokenData) {
+      dispatch(getOrderListData({ page: 1, limit: 10, token: tokenData }));
+    }
     setRefreshing(false);
   };
 

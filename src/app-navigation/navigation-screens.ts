@@ -1,4 +1,7 @@
-export const ListStackScreens: Record<string, any> = {
+// src/navigation/navigation-screens.ts
+
+// --- Màn hình User ---
+const UserScreens = {
   Home: { name: "Home", component: require("@app-views/Home/Home").default },
   Search: {
     name: "Search",
@@ -61,4 +64,37 @@ export const ListStackScreens: Record<string, any> = {
     name: "SettingsScreen",
     component: require("@app-views/Personal/SettingsScreen").default,
   },
+};
+
+// --- Màn hình Shipper ---
+const ShipperScreens = {
+  ShipperLanding: {
+    name: "ShipperLanding",
+    component: require("src/app-views/shipper/shipperlanding").default,
+  },
+  ShipperBottomContainer: {
+    name: "ShipperBottomContainer",
+    component: require("src/app-views/shipper/shipperBottomTabs").default,
+  },
+};
+
+// --- Màn hình Store (Chuẩn bị cho tương lai) ---
+const StoreScreens = {
+  StoreLanding: {
+    name: "StoreLanding",
+    component: require("../../store/app-views/StoreLanding").default,
+  },
+  StoreBottomContainer: {
+    name: "StoreBottomContainer",
+    // Trỏ đường dẫn về đúng file StoreBottomContainer bên thư mục store
+    component: require("../../store/app-navigation/StoreBottomContainer")
+      .default,
+  },
+};
+
+// --- Gộp tất cả ---
+export const ListStackScreens: Record<string, any> = {
+  ...UserScreens,
+  ...ShipperScreens,
+  ...StoreScreens,
 };
