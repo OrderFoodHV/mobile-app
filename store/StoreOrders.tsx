@@ -37,7 +37,7 @@ const StoreOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
-  const [storeId, setStoreId] = useState<number>(1);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
 
   const fetchOrders = async () => {
     if (!storeId || !tokenData) return;
@@ -104,16 +104,7 @@ const StoreOrders = () => {
             const actualOrders =
               res.orders || res.data?.orders || res.data || res;
             if (Array.isArray(actualOrders)) {
-              setOrders((prevOrders) => {
-                if (actualOrders.length > prevOrders.length) {
-                  Alert.alert(
-                    "🔔 CÓ ĐƠN HÀNG MỚI!",
-                    "Khách vừa đặt món xong! Sếp vào duyệt ngay cho nóng!",
-                    [{ text: "XEM NGAY" }],
-                  );
-                }
-                return actualOrders;
-              });
+              setOrders(actualOrders);
             }
           }
         } catch (e) {}

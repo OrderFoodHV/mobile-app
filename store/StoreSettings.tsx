@@ -25,45 +25,51 @@ const StoreSettings: React.FC = () => {
   const user = useSelector((state: any) => state.auth.account);
   const tokenData = useSelector((state: any) => state.auth.tokenData);
 
-  const [name, setName] = useState(user?.name || user?.user_name || "");
+  const [name, setName] = useState(user?.storeName || user?.name || user?.user_name || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [address, setAddress] = useState(user?.address || "");
+  const [address, setAddress] = useState(user?.storeAddress || user?.address || "");
   const [loading, setLoading] = useState(false);
 
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = async () => {
     if (!name || !phone || !address) {
       Alert.alert("Lỗi", "Vui lòng điền đủ thông tin!");
       return;
     }
     setLoading(true);
 
-    /* Tạm thời khóa gọi API để FE tự chạy mượt
     try {
       const res = await useCallAPI({
         method: "PUT",
-        url: `${URL_API}/store/profile`, 
+        url: `${URL_API}/store/profile`,
         token: tokenData,
-        data: { name, phone, address }
+        data: { name, phone, address },
       });
-    } catch (error) { console.log(error) }
-    */
 
-    setTimeout(() => {
-      // 🌟 ÉP REDUX CẬP NHẬT TRỰC TIẾP
-      dispatch(
-        updateAuthInfor({
-          name: name, // Push name lên Redux
-          user_name: name, // Đẩy luôn user_name đề phòng các màn hình khác gọi
-          phone: phone,
-          address: address,
-        }),
-      );
+      if (res?.success) {
+        dispatch(
+          updateAuthInfor({
+            name: user?.name, // Giữ nguyên tên user
+            storeName: name, // Push tên quán lên Redux
+            phone: phone,
+            storeAddress: address, // Cập nhật địa chỉ quán
+          }),
+        );
 
+        Alert.alert("Thành công", "Đã cập nhật thông tin cửa hàng thành công!", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert(
+          "Lỗi",
+          res?.message || "Không thể cập nhật thông tin cửa hàng.",
+        );
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Lỗi", "Không thể kết nối máy chủ để cập nhật.");
+    } finally {
       setLoading(false);
-      Alert.alert("Thành công", "Đã cập nhật thông tin cửa hàng!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
-    }, 600); // Demo loading 0.6s cho mượt
+    }
   };
 
   const handleDeleteAccount = () => {

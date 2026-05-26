@@ -17,6 +17,7 @@ import { useSelector } from "react-redux";
 
 const StoreStats = () => {
   const token = useSelector((state: any) => state.auth.tokenData);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
   const [currentSubTab, setCurrentSubTab] = useState("dashboard"); // "dashboard" | "vouchers"
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
@@ -46,12 +47,15 @@ const StoreStats = () => {
       // 🚀 Gọi API lấy dữ liệu báo cáo tổng quan của Kênh người bán
       const res = await useCallAPI({
         method: "GET",
-        url: `${URL_API}/store/1/dashboard-summary`,
+        url: `${URL_API}/store/${storeId}/dashboard-summary`,
         token: token,
       });
-      if (res && res.status === "success") {
+      if (res) {
+        const actualSummary = res.data || res;
         setSummary(
-          res.data || { revenue: 0, total: 0, success: 0, cancelled: 0 },
+          actualSummary && actualSummary.revenue !== undefined
+            ? actualSummary
+            : { revenue: 0, total: 0, success: 0, cancelled: 0 }
         );
       }
     } catch (e) {
@@ -63,7 +67,7 @@ const StoreStats = () => {
 
   useEffect(() => {
     if (currentSubTab === "dashboard") fetchStoreDashboardData();
-  }, [currentSubTab]);
+  }, [currentSubTab, storeId, token]);
 
   return (
     <View style={styles.container}>

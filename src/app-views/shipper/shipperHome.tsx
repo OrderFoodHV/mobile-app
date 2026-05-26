@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   Switch,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   SafeAreaView,
   Platform,
   StatusBar,
-  Linking, // 🌟 THÊM MỚI: Dùng để kích hoạt cuộc gọi điện thoại thật
+  Linking,
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -18,30 +19,33 @@ import socket from "src/app-helper/socketHelper";
 
 const ShipperHome = () => {
   const [isOnline, setIsOnline] = useState(false);
-  const [orderState, setOrderState] = useState("searching"); // "searching" | "found" | "delivering"
-
-  // 🌟 NÂNG CẤP HÀNG ĐỢI: Chuyển sang mảng để lưu nhiều đơn cùng lúc, chống trôi đơn
-  const [orderQueue, setOrderQueue] = useState<any[]>([]);
+  // currentOrder chỉ lưu đơn đang GIAO (delivering state)
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  // orderQueue lưu TẤT CẢ đơn đang chờ tài xế nhận
+  const [orderQueue, setOrderQueue] = useState<any[]>([]);
 
   const user = useSelector((state: any) => state.auth);
-  const displayName = user?.name || "Tài xế";
+  const displayName = user?.account?.user_name || user?.name || "Tài xế";
+
+  // Dùng ref để tránh useEffect re-register socket listener mỗi lần state thay đổi
+  const isOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
 
   useEffect(() => {
     if (isOnline) {
       if (!socket.connected) socket.connect();
       socket.emit("register_shipper");
 
-      socket.on("broadcast_new_order", (orderData) => {
+      socket.on("broadcast_new_order", (orderData: any) => {
         console.log("🎯 RADAR HỨNG ĐƯỢC ĐƠN MỚI:", orderData);
-        // Xếp hàng vào mảng queue chứ không đè trực tiếp lên đơn cũ nữa
-        setOrderQueue((prevQueue) => {
-          const updated = [...prevQueue, orderData];
-          if (!currentOrder && orderState === "searching") {
-            setCurrentOrder(orderData);
-            setOrderState("found");
-          }
-          return updated;
+        // Thêm vào hàng đợi, tài xế tự chọn đơn nào muốn nhận
+        setOrderQueue((prev) => {
+          // Tránh thêm trùng đơn
+          const exists = prev.some((o) => o.orderId === orderData.orderId);
+          if (exists) return prev;
+          return [...prev, orderData];
         });
       });
     } else {
@@ -49,21 +53,16 @@ const ShipperHome = () => {
       if (socket.connected) socket.disconnect();
       setOrderQueue([]);
       setCurrentOrder(null);
-      setOrderState("searching");
     }
 
     return () => {
       socket.off("broadcast_new_order");
     };
-  }, [isOnline, currentOrder, orderState]);
+  }, [isOnline]); // Chỉ phụ thuộc vào isOnline, không tái đăng ký khi state đơn thay đổi
 
-  // 🌟 THÊM MỚI: Hàm kích hoạt cuộc gọi điện thoại hệ thống
   const handleCallCustomer = (phone: string) => {
     if (!phone || phone === "Chưa cập nhật") {
-      Alert.alert(
-        "Thông báo",
-        "Khách hàng này chưa cập nhật số điện thoại sếp ơi!",
-      );
+      Alert.alert("Thông báo", "Khách hàng này chưa cập nhật số điện thoại sếp ơi!");
       return;
     }
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -71,13 +70,20 @@ const ShipperHome = () => {
     });
   };
 
-  const handleAcceptOrder = () => {
-    if (!currentOrder) return;
+  // Nhận một đơn cụ thể từ danh sách hàng đợi
+  const handleAcceptOrder = (order: any) => {
     socket.emit("driver_accepts", {
-      orderId: currentOrder.orderId,
+      orderId: order.orderId,
       driverData: { name: displayName },
     });
-    setOrderState("delivering");
+    // Chuyển sang trạng thái giao hàng và xóa khỏi hàng đợi
+    setCurrentOrder(order);
+    setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
+  };
+
+  // Bỏ qua (xóa) một đơn cụ thể khỏi hàng đợi
+  const handleDismissOrder = (order: any) => {
+    setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
   };
 
   const handleCompleteOrder = () => {
@@ -88,39 +94,71 @@ const ShipperHome = () => {
       "Thành công 🎉",
       `Sếp đã hoàn thành đơn #${currentOrder.orderId}! +${Number(currentOrder.shipping_fee).toLocaleString()}đ đã được cộng vào ví thu nhập.`,
     );
-
-    // Loại bỏ đơn vừa giao xong ra khỏi hàng đợi
-    setOrderQueue((prevQueue) => {
-      const remaining = prevQueue.filter(
-        (o) => o.orderId !== currentOrder.orderId,
-      );
-      if (remaining.length > 0) {
-        setCurrentOrder(remaining[0]);
-        setOrderState("found");
-      } else {
-        setCurrentOrder(null);
-        setOrderState("searching");
-      }
-      return remaining;
-    });
+    setCurrentOrder(null);
   };
 
-  // Hàm bỏ qua đơn hiện tại để xem đơn kế tiếp trong hàng đợi
-  const handleSkipOrder = () => {
-    setOrderQueue((prevQueue) => {
-      const remaining = prevQueue.filter(
-        (o) => o.orderId !== currentOrder.orderId,
-      );
-      if (remaining.length > 0) {
-        setCurrentOrder(remaining[0]);
-        setOrderState("found");
-      } else {
-        setCurrentOrder(null);
-        setOrderState("searching");
-      }
-      return remaining;
-    });
-  };
+  // Render từng card đơn hàng trong hàng đợi
+  const renderOrderQueueCard = ({ item, index }: { item: any; index: number }) => (
+    <View style={styles.newOrderCard}>
+      <View style={styles.orderHeader}>
+        <View style={styles.badgeNew}>
+          <Text style={styles.badgeText}>🔔 ĐƠN #{item.orderId}</Text>
+        </View>
+        <Text style={styles.orderPrice}>
+          +{Number(item.shipping_fee).toLocaleString("vi-VN")}đ
+        </Text>
+      </View>
+
+      <View style={styles.orderRoute}>
+        <View style={styles.routeItem}>
+          <Feather name="map-pin" size={16} color="#F97316" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.routeText} numberOfLines={1}>
+              🏪 Quán: {item.restaurant}
+            </Text>
+            <Text style={styles.routeSubText} numberOfLines={1}>
+              📍 {item.restaurant_address || "Chưa cập nhật địa chỉ"}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.routeDash} />
+        <View style={styles.routeItem}>
+          <Feather name="navigation" size={16} color="#3B82F6" />
+          <Text style={styles.routeText} numberOfLines={2}>
+            🚴 Giao: {item.address}
+          </Text>
+        </View>
+      </View>
+
+      {/* Thông tin thêm */}
+      <View style={styles.orderMeta}>
+        <Text style={styles.metaText}>
+          📦 Món: {item.items?.map((i: any) => `${i.name} x${i.quantity}`).join(", ") || "Xem chi tiết"}
+        </Text>
+        <Text style={styles.metaText}>
+          💰 COD: {Number(item.total_price).toLocaleString("vi-VN")}đ  •  📍 {item.distance ? `${item.distance}km` : "N/A"}
+        </Text>
+        {item.note && item.note !== "Không có ghi chú" && (
+          <Text style={styles.noteText}>📝 {item.note}</Text>
+        )}
+      </View>
+
+      <View style={styles.actionRowGap}>
+        <TouchableOpacity
+          style={styles.btnSkip}
+          onPress={() => handleDismissOrder(item)}
+        >
+          <Text style={styles.btnSkipText}>Bỏ qua</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.btnAccept}
+          onPress={() => handleAcceptOrder(item)}
+        >
+          <Text style={styles.btnAcceptText}>NHẬN ĐƠN</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -137,7 +175,7 @@ const ShipperHome = () => {
               { color: isOnline ? "#16A34A" : "#9CA3AF" },
             ]}
           >
-            {isOnline ? `Trực tuyến (${orderQueue.length} đơn)` : "Ngoại tuyến"}
+            {isOnline ? `Trực tuyến${orderQueue.length > 0 ? ` (${orderQueue.length} đơn)` : ""}` : "Ngoại tuyến"}
           </Text>
           <Switch
             trackColor={{ false: "#D1D5DB", true: "#F97316" }}
@@ -160,8 +198,8 @@ const ShipperHome = () => {
               <Feather name="moon" size={48} color="#9CA3AF" />
               <Text style={styles.offlineTitle}>Sếp đang nghỉ ngơi</Text>
             </View>
-          ) : orderState === "delivering" ? (
-            /* SUB-SCREEN 1: GIAO DIỆN ĐANG GIAO HÀNG HÀNH TRÌNH THỰC TẾ */
+          ) : currentOrder ? (
+            /* SUB-SCREEN 1: ĐANG GIAO HÀNG */
             <View style={styles.deliveringCard}>
               <View style={styles.deliveringHeader}>
                 <Feather name="navigation" size={24} color="#F97316" />
@@ -170,23 +208,20 @@ const ShipperHome = () => {
                 </Text>
               </View>
 
-              {/* KHỐI THÔNG TIN KHÁCH HÀNG */}
               <View style={styles.infoSection}>
-                <Text style={styles.infoLabel}>👤 Khách hàng:</Text>
-                <Text style={styles.infoValue}>
-                  {currentOrder?.customer_name}
-                </Text>
-                <Text style={styles.infoLabel}>📞 Điện thoại:</Text>
-                <Text style={styles.infoValue}>
-                  {currentOrder?.customer_phone}
-                </Text>
+                <Text style={styles.infoLabel}>🏪 Lấy hàng tại quán:</Text>
+                <Text style={styles.infoValue}>{currentOrder?.restaurant}</Text>
+                <Text style={styles.infoAddressSub}>{currentOrder?.restaurant_address || "Chưa cập nhật địa chỉ quán"}</Text>
                 <Text style={styles.infoLabel}>📍 Giao đến:</Text>
                 <Text style={styles.infoValue}>{currentOrder?.address}</Text>
+                <Text style={styles.infoLabel}>👤 Khách hàng:</Text>
+                <Text style={styles.infoValue}>{currentOrder?.customer_name}</Text>
+                <Text style={styles.infoLabel}>📞 Điện thoại:</Text>
+                <Text style={styles.infoValue}>{currentOrder?.customer_phone}</Text>
                 <Text style={styles.infoLabel}>📝 Ghi chú đơn:</Text>
                 <Text style={styles.noteValue}>{currentOrder?.note}</Text>
               </View>
 
-              {/* KHỐI DANH SÁCH MÓN ĂN CHI TIẾT */}
               <View style={styles.foodSection}>
                 <Text style={styles.foodTitle}>🍔 DANH SÁCH MÓN SHIP:</Text>
                 {currentOrder?.items?.map((item: any, idx: number) => (
@@ -209,9 +244,7 @@ const ShipperHome = () => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={styles.callButton}
-                  onPress={() =>
-                    handleCallCustomer(currentOrder?.customer_phone)
-                  }
+                  onPress={() => handleCallCustomer(currentOrder?.customer_phone)}
                 >
                   <Feather name="phone-call" size={18} color="#fff" />
                   <Text style={styles.actionBtnText}>Gọi khách</Text>
@@ -223,54 +256,26 @@ const ShipperHome = () => {
                   <Text style={styles.actionBtnText}>Xác nhận giao xong</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Hiển thị số đơn đang chờ trong hàng đợi */}
+              {orderQueue.length > 0 && (
+                <View style={styles.queueBanner}>
+                  <Text style={styles.queueBannerText}>
+                    🔔 Đang có {orderQueue.length} đơn mới chờ bạn sau khi giao xong!
+                  </Text>
+                </View>
+              )}
             </View>
-          ) : orderState === "found" && currentOrder ? (
-            /* SUB-SCREEN 2: GIAO DIỆN HỘP NHẬN ĐƠN MỚI (CÓ HÀNG ĐỢI CHỐNG TRÔI) */
-            <View style={styles.newOrderCard}>
-              <View style={styles.orderHeader}>
-                <View style={styles.badgeNew}>
-                  <Text style={styles.badgeText}>
-                    🔔 ĐƠN CHỜ ({orderQueue.length})
-                  </Text>
-                </View>
-                <Text style={styles.orderPrice}>
-                  +{Number(currentOrder.shipping_fee).toLocaleString("vi-VN")}đ
-                </Text>
-              </View>
-
-              <View style={styles.orderRoute}>
-                <View style={styles.routeItem}>
-                  <Feather name="map-pin" size={16} color="#F97316" />
-                  <Text style={styles.routeText} numberOfLines={1}>
-                    Quán: {currentOrder.restaurant}
-                  </Text>
-                </View>
-                <View style={styles.routeDash} />
-                <View style={styles.routeItem}>
-                  <Feather name="navigation" size={16} color="#3B82F6" />
-                  <Text style={styles.routeText} numberOfLines={2}>
-                    Giao: {currentOrder.address}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.actionRowGap}>
-                <TouchableOpacity
-                  style={styles.btnSkip}
-                  onPress={handleSkipOrder}
-                >
-                  <Text style={styles.btnSkipText}>Bỏ qua đơn</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.btnAccept}
-                  onPress={handleAcceptOrder}
-                >
-                  <Text style={styles.btnAcceptText}>CHẠM NHẬN ĐƠN</Text>
-                </TouchableOpacity>
-              </View>
+          ) : orderQueue.length > 0 ? (
+            /* SUB-SCREEN 2: DANH SÁCH TẤT CẢ ĐƠN HÀNG ĐANG CHỜ */
+            <View>
+              <Text style={styles.queueHeader}>
+                📋 {orderQueue.length} đơn đang chờ — chọn đơn muốn nhận:
+              </Text>
+              {orderQueue.map((order, index) => renderOrderQueueCard({ item: order, index }))}
             </View>
           ) : (
-            /* SUB-SCREEN 3: GIAO DIỆN CHỜ RADAR QUÉT */
+            /* SUB-SCREEN 3: CHỜ RADAR QUÉT */
             <View style={styles.pulseBox}>
               <Feather
                 name="radio"
@@ -288,6 +293,7 @@ const ShipperHome = () => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -385,6 +391,7 @@ const styles = StyleSheet.create({
     marginLeft: 7,
   },
   routeText: { fontSize: 14, color: "#374151", fontWeight: "500", flex: 1 },
+  routeSubText: { fontSize: 12, color: "#6B7280", fontWeight: "400", marginTop: 2 },
   actionRowGap: { flexDirection: "row", gap: 10, marginTop: 5 },
   btnSkip: {
     flex: 1,
@@ -442,6 +449,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 2,
   },
+  infoAddressSub: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "400",
+    marginBottom: 6,
+    fontStyle: "italic",
+  },
   noteValue: { fontSize: 13, color: "#EA580C", fontWeight: "bold" },
   foodSection: {
     borderTopWidth: 1,
@@ -485,5 +499,52 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   actionBtnText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+
+  // Styles cho danh sách hàng đợi đơn
+  queueHeader: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#374151",
+    marginBottom: 12,
+    backgroundColor: "#FFF7ED",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+  },
+  orderMeta: {
+    backgroundColor: "#F9FAFB",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: "#4B5563",
+    fontWeight: "500",
+  },
+  noteText: {
+    fontSize: 12,
+    color: "#EA580C",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  queueBanner: {
+    marginTop: 14,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    alignItems: "center",
+  },
+  queueBannerText: {
+    color: "#C2410C",
+    fontWeight: "700",
+    fontSize: 13,
+    textAlign: "center",
+  },
 });
 export default ShipperHome;

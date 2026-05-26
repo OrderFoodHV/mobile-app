@@ -12,12 +12,14 @@ import {
   Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 
 const ShipperLanding = () => {
   const navigation = useNavigation<any>();
   const [vehicle, setVehicle] = useState("");
+  const token = useSelector((state: any) => state.auth.tokenData);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +38,7 @@ const ShipperLanding = () => {
     const res = await useCallAPI({
       method: "POST",
       url: `${URL_API}/shippers/register`, // Route API đã chuẩn sau khi bỏ /api
+      token: token,
       data: { vehicle, phone },
     });
     setLoading(false);

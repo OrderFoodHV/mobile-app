@@ -25,7 +25,7 @@ const StoreDashboard = () => {
     shallowEqual,
   );
 
-  const [storeId, setStoreId] = useState<number>(1);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
@@ -44,8 +44,9 @@ const StoreDashboard = () => {
         url: `${URL_API}/store/${storeId}/status`,
         token: tokenData,
       });
-      if (statusRes && statusRes.data) {
-        setIsOpen(statusRes.data.is_open === 1);
+      if (statusRes) {
+        const actualStatus = statusRes.data !== undefined ? statusRes.data : statusRes;
+        setIsOpen(actualStatus?.is_open === 1);
       }
 
       const revenueRes = await useCallAPI({
@@ -53,8 +54,9 @@ const StoreDashboard = () => {
         url: `${URL_API}/store/${storeId}/revenue/summary?period=day`,
         token: tokenData,
       });
-      if (revenueRes && revenueRes.data) {
-        setSummary(revenueRes.data);
+      if (revenueRes) {
+        const actualRevenue = revenueRes.data !== undefined ? revenueRes.data : revenueRes;
+        setSummary(actualRevenue);
       }
     } catch (error) {
       console.log("Lỗi lấy data Dashboard:", error);
@@ -65,7 +67,7 @@ const StoreDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [tokenData]);
+  }, [tokenData, storeId]);
 
   const toggleStoreStatus = async () => {
     setIsOpen((prev) => !prev);

@@ -27,7 +27,7 @@ const StoreVouchers = () => {
   );
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [storeId] = useState<number>(1);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
 
   const fetchVouchers = async () => {
     if (!tokenData) return;
@@ -38,7 +38,8 @@ const StoreVouchers = () => {
         url: `${URL_API}/store/${storeId}/vouchers`,
         token: tokenData,
       });
-      if (res && res.data) setVouchers(res.data);
+      const actualVouchers = res?.data || res;
+      if (res && Array.isArray(actualVouchers)) setVouchers(actualVouchers);
     } catch (error) {
       console.log("Lỗi lấy voucher:", error);
     } finally {
@@ -48,7 +49,7 @@ const StoreVouchers = () => {
 
   useEffect(() => {
     fetchVouchers();
-  }, []);
+  }, [tokenData, storeId]);
 
   const toggleStatus = async (voucherId: number, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";

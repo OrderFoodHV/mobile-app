@@ -36,7 +36,7 @@ const StorePersonal: React.FC = () => {
               </View>
               <View style={styles.infoBox}>
                 <Text style={styles.nameText}>
-                  {user?.name || "Cửa hàng InOrder"}
+                  {user?.storeName || user?.name || "Cửa hàng InOrder"}
                 </Text>
                 <Text style={styles.roleBadge}>Đối tác Nhà hàng</Text>
               </View>
@@ -54,7 +54,7 @@ const StorePersonal: React.FC = () => {
             <View style={styles.detailRow}>
               <Feather name="map-pin" size={16} color="#6B7280" />
               <Text style={styles.detailText} numberOfLines={2}>
-                {user?.address || "55 Giải Phóng, Hai Bà Trưng, Hà Nội"}
+                {user?.storeAddress || user?.address || "55 Giải Phóng, Hai Bà Trưng, Hà Nội"}
               </Text>
             </View>
           </View>

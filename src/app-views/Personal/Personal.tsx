@@ -33,13 +33,10 @@ const Personal: React.FC = () => {
   const displayName = account?.user_name || "Khách hàng HUCE";
   const displayPhone = account?.phone || "Chưa cập nhật SĐT";
   const handleGoToShipper = () => {
-    // 1. Check xem đã đăng nhập chưa (check cả user và account cho chắc)
-    if (!user && !account)
+    if (!account)
       return Alert.alert("Thông báo", "Vui lòng đăng nhập!");
 
-    // 2. 🔥 Bắt chính xác cờ is_shipper từ Redux
-    const isShipper =
-      Number(user?.is_shipper) === 1 || Number(account?.is_shipper) === 1;
+    const isShipper = Number(account?.is_shipper) === 1;
 
     if (isShipper) {
       // Đã đăng ký -> Bay thẳng vào màn chính Shipper
@@ -51,13 +48,18 @@ const Personal: React.FC = () => {
   };
 
   const handleGoToSeller = () => {
-    if (!user) {
+    if (!account) {
       Alert.alert("Thông báo", "Bạn chưa đăng nhập!");
       return;
     }
 
-    if (user?.is_seller === 1) {
+    if (Number(account?.is_seller) === 1) {
       navigation.navigate("StoreBottomContainer");
+    } else if (account?.storeStatus === "pending") {
+      Alert.alert(
+        "Thông báo",
+        "Yêu cầu mở cửa hàng của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
+      );
     } else {
       // Sếp đổi từ Alert sang chuyển hướng đến màn Đăng ký mở quán
       Alert.alert(

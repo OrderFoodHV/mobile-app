@@ -8,9 +8,11 @@ import {
   ScrollView,
   Alert,
   Image,
+  Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useSelector, shallowEqual } from "react-redux";
 
 import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
@@ -31,7 +33,7 @@ const StoreProductForm = () => {
     (state: RootState) => state.auth,
     shallowEqual,
   );
-  const [storeId] = useState<number>(1);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
 
   // Các trường dữ liệu của món ăn
   const [name, setName] = useState(editProduct?.name || "");
@@ -47,6 +49,65 @@ const StoreProductForm = () => {
   ); // Mặc định là Snacks (1)
 
   const [loading, setLoading] = useState(false);
+
+  const handleSelectImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Quyền truy cập",
+        "Ứng dụng cần quyền truy cập thư viện ảnh để tải ảnh món ăn!"
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedImageUri = result.assets[0].uri;
+      uploadImage(selectedImageUri);
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    setLoading(true);
+    try {
+      const uriParts = uri.split(".");
+      const fileType = uriParts[uriParts.length - 1] || "jpeg";
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: Platform.OS === "android" ? uri : uri.replace("file://", ""),
+        name: `photo-${Date.now()}.${fileType}`,
+        type: `image/${fileType === "jpg" ? "jpeg" : fileType}`,
+      } as any);
+
+      // Gọi cổng /upload ở gốc domain của API
+      const res = await useCallAPI({
+        method: "POST",
+        url: `${URL_API.replace(/\/api$/, "")}/upload`,
+        data: formData,
+        token: tokenData,
+        typeHeaders: "multipart/form-data",
+      });
+
+      if (res && res.success) {
+        setImage(res.imageUrl);
+        Alert.alert("Thành công", "Tải ảnh lên thành công!");
+      } else {
+        Alert.alert("Lỗi", "Không thể tải ảnh lên server.");
+      }
+    } catch (error) {
+      console.log("Lỗi tải ảnh:", error);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi tải ảnh lên.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name || !price) {
@@ -74,7 +135,7 @@ const StoreProductForm = () => {
           method: "PUT",
           url: `${URL_API}/store/${storeId}/products/${editProduct.id}`,
           token: tokenData,
-          payload,
+          data: payload,
         });
         Alert.alert("Thành công", "Đã cập nhật món ăn!");
       } else {
@@ -83,7 +144,7 @@ const StoreProductForm = () => {
           method: "POST",
           url: `${URL_API}/store/${storeId}/products`,
           token: tokenData,
-          payload,
+          data: payload,
         });
         Alert.alert("Thành công", "Đã thêm món ăn mới vào Menu!");
       }
@@ -130,30 +191,58 @@ const StoreProductForm = () => {
             placeholder="VD: 45000"
           />
 
-          <Text style={styles.label}>
-            Danh mục (1: Ăn vặt, 2: Đồ ăn nhanh, 3: Đồ uống)
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={categoryId}
-            onChangeText={setCategoryId}
-            keyboardType="numeric"
-            placeholder="Nhập số 1, 2 hoặc 3"
-          />
+          <Text style={styles.label}>Danh mục món ăn</Text>
+          <View style={styles.categoryContainer}>
+            {[
+              { id: 1, name: "Ăn vặt" },
+              { id: 2, name: "Đồ ăn nhanh" },
+              { id: 3, name: "Đồ uống" },
+            ].map((cat) => {
+              const isSelected = Number(categoryId) === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryPill,
+                    isSelected && styles.categoryPillActive,
+                  ]}
+                  onPress={() => setCategoryId(cat.id.toString())}
+                >
+                  <Text
+                    style={[
+                      styles.categoryPillText,
+                      isSelected && styles.categoryPillTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-          <Text style={styles.label}>
-            Link Ảnh (Copy link từ Google Images dán vào đây)
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={image}
-            onChangeText={setImage}
-            placeholder="https://..."
-          />
-          {/* Xem trước ảnh nếu có link */}
-          {image ? (
-            <Image source={{ uri: image }} style={styles.previewImg} />
-          ) : null}
+          <Text style={styles.label}>Hình ảnh món ăn</Text>
+          <View style={styles.imagePickerWrapper}>
+            {image ? (
+              <View style={styles.previewWrapper}>
+                <Image source={{ uri: image }} style={styles.previewImg} />
+                <TouchableOpacity
+                  style={styles.removeImageBtn}
+                  onPress={() => setImage("")}
+                >
+                  <Feather name="x" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.uploadBtn}
+                onPress={handleSelectImage}
+              >
+                <Feather name="camera" size={24} color="#6B7280" style={{ marginBottom: 4 }} />
+                <Text style={styles.uploadBtnText}>Tải ảnh lên từ thiết bị</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <Text style={styles.label}>Mô tả món ăn</Text>
           <TextInput
@@ -223,6 +312,67 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  categoryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 8,
+  },
+  categoryPill: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryPillActive: {
+    backgroundColor: colors.blue_primary,
+    borderColor: colors.blue_primary,
+  },
+  categoryPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  categoryPillTextActive: {
+    color: "#fff",
+  },
+  imagePickerWrapper: {
+    marginBottom: 16,
+  },
+  previewWrapper: {
+    position: "relative",
+    width: "100%",
+  },
+  removeImageBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadBtn: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#9CA3AF",
+    borderRadius: 10,
+    height: 120,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadBtnText: {
+    fontSize: 14,
+    color: "#4B5563",
+    fontWeight: "500",
+  },
 });
 
 export default StoreProductForm;

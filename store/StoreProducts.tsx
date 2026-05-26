@@ -284,7 +284,7 @@ const StoreProducts = () => {
   );
   const [products, setProducts] = useState<any[]>(ALL_DB_PRODUCTS);
   const [loading, setLoading] = useState(false);
-  const [storeId] = useState<number>(1);
+  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
 
   const fetchProducts = async () => {
     if (!tokenData) return;
@@ -295,9 +295,9 @@ const StoreProducts = () => {
         url: `${URL_API}/store/${storeId}/products`,
         token: tokenData,
       });
-      // Nếu gọi API bốc từ DB lên thành công và có data thật thì ưu tiên hiển thị dữ liệu DB
-      if (res && res.data && res.data.length > 0) {
-        setProducts(res.data);
+      const actualProducts = res?.data || res;
+      if (res && Array.isArray(actualProducts)) {
+        setProducts(actualProducts);
       } else {
         setProducts(ALL_DB_PRODUCTS);
       }
@@ -315,7 +315,7 @@ const StoreProducts = () => {
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => fetchProducts());
     return unsubscribe;
-  }, [navigation, tokenData]);
+  }, [navigation, tokenData, storeId]);
 
   const toggleAvailability = async (
     productId: number,

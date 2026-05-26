@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -142,7 +143,28 @@ const ShipperPersonal: React.FC = () => {
 
             <TouchableOpacity
               style={[styles.menuItem, { borderBottomWidth: 0 }]}
-              onPress={() => navigation.navigate("StoreBottomContainer")}
+              onPress={() => {
+                if (Number(user?.is_seller) === 1) {
+                  navigation.navigate("StoreBottomContainer");
+                } else if (user?.storeStatus === "pending") {
+                  Alert.alert(
+                    "Thông báo",
+                    "Yêu cầu mở cửa hàng của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
+                  );
+                } else {
+                  Alert.alert(
+                    "Thông báo",
+                    "Bạn chưa là Người bán. Bạn có muốn đăng ký mở cửa hàng?",
+                    [
+                      { text: "Để sau", style: "cancel" },
+                      {
+                        text: "Đăng ký ngay",
+                        onPress: () => navigation.navigate("StoreLanding"),
+                      },
+                    ],
+                  );
+                }
+              }}
             >
               <View style={styles.menuLeft}>
                 <View

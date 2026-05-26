@@ -29,7 +29,7 @@ export const getCartData = createAsyncThunk("get/cartData", async (token: string
   });
 
   if (response?.success === false) {
-    return response;
+    return { success: false, message: response?.message ?? "Network Error", status: response?.status ?? null };
   }
 
   const items = Array.isArray(response) ? normalizeCartItems(response) : [];
@@ -51,7 +51,7 @@ export const getProductCartListData = createAsyncThunk(
     });
 
     if (response?.success === false) {
-      return response;
+      return { success: false, message: response?.message ?? "Network Error", status: response?.status ?? null };
     }
 
     return {
@@ -76,8 +76,9 @@ export const addProductInCart = createAsyncThunk(
     });
 
     return {
-      ...response,
       success: response?.success !== false,
+      message: response?.message ?? null,
+      status: response?.status ?? null,
       response: {
         ...data,
         total_price: Number(data.price) * Number(data.quantity),
@@ -106,8 +107,9 @@ export const removeProductInCart = createAsyncThunk(
     });
 
     return {
-      ...response,
       success: response?.success !== false,
+      message: response?.message ?? null,
+      status: response?.status ?? null,
       response: { product_id, cart_id },
     };
   },
@@ -128,8 +130,9 @@ export const increaseProductQuantityInCart = createAsyncThunk(
     });
 
     return {
-      ...response,
       success: response?.success !== false,
+      message: response?.message ?? null,
+      status: response?.status ?? null,
       response: {
         cart_id: data.cart_id,
         product_id: data.product_id,

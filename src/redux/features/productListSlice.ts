@@ -38,7 +38,12 @@ export const getProductData = createAsyncThunk(
     });
 
     if (response?.success === false) {
-      return response;
+      // Chỉ trả về dữ liệu serializable, KHÔNG đưa AxiosError vào Redux
+      return {
+        success: false,
+        message: response?.message ?? "Network Error",
+        status: response?.status ?? null,
+      };
     }
 
     const list = Array.isArray(response) ? response : [];

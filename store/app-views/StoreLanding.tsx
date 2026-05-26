@@ -10,11 +10,15 @@ import {
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { useNavigation } from "@react-navigation/native";
+import { useSelector, useDispatch } from "react-redux";
+import { updateAuthInfor } from "src/redux/features/authSlice";
 
 const StoreLanding = () => {
   const [storeName, setStoreName] = useState("");
   const [address, setAddress] = useState("");
   const navigation = useNavigation<any>();
+  const token = useSelector((state: any) => state.auth.tokenData);
+  const dispatch = useDispatch();
 
   const handleRegisterStore = async () => {
     if (!storeName || !address) {
@@ -25,15 +29,21 @@ const StoreLanding = () => {
     const res = await useCallAPI({
       method: "POST",
       url: `${URL_API}/store/register`, // Nhớ update API này ở Backend
+      token: token,
       data: { store_name: storeName, address },
     });
 
     if (res?.success) {
+      dispatch(
+        updateAuthInfor({
+          storeStatus: "pending",
+        })
+      );
       Alert.alert(
         "Thành công",
-        "Đăng ký mở quán thành công! Vui lòng đăng nhập lại để cập nhật quyền.",
+        res.message || "Gửi yêu cầu đăng ký mở quán thành công! Vui lòng chờ Admin phê duyệt.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
       );
-      navigation.goBack();
     }
   };
 

@@ -50,8 +50,12 @@ const persistAuthData = async (payload: any) => {
     email: payload?.email,
     role: payload?.role,
     phone: payload?.phone,
-    is_shipper: payload?.is_shipper, // Nhớ lưu xuống bộ nhớ
-    is_seller: payload?.is_seller, // Nhớ lưu xuống bộ nhớ
+    is_shipper: payload?.is_shipper, 
+    is_seller: payload?.is_seller, 
+    storeId: payload.user?.storeId,
+    storeName: payload.user?.storeName,
+    storeAddress: payload.user?.storeAddress,
+    storeStatus: payload.user?.storeStatus,
     password: payload?.password,
   };
 
@@ -129,6 +133,11 @@ const authSlice = createSlice({
           phone: action.payload.phone || state.account.phone,
           is_shipper: action.payload.is_shipper ?? state.account.is_shipper,
           is_seller: action.payload.is_seller ?? state.account.is_seller,
+          storeId: action.payload.storeId ?? state.account.storeId,
+          storeName: action.payload.storeName ?? state.account.storeName,
+          storeAddress:
+            action.payload.storeAddress ?? state.account.storeAddress,
+          storeStatus: action.payload.storeStatus ?? state.account.storeStatus,
 
           address: action.payload.address || state.account.address, // Dành cho Store
           vehicle: action.payload.vehicle || state.account.vehicle, // Dành cho Shipper
@@ -136,6 +145,27 @@ const authSlice = createSlice({
             action.payload.license_plate || state.account.license_plate, // Shipper
           avatar: action.payload.avatar || state.account.avatar, // Ảnh đại diện dùng chung
         };
+      }
+
+      if (state.user) {
+        state.user = {
+          ...state.user,
+          name: action.payload.name || state.user.name,
+          phone: action.payload.phone || state.user.phone,
+          is_shipper: action.payload.is_shipper ?? state.user.is_shipper,
+          is_seller: action.payload.is_seller ?? state.user.is_seller,
+          storeId: action.payload.storeId ?? state.user.storeId,
+          storeName: action.payload.storeName ?? state.user.storeName,
+          storeAddress:
+            action.payload.storeAddress ?? state.user.storeAddress,
+          storeStatus: action.payload.storeStatus ?? state.user.storeStatus,
+        };
+      }
+
+      if (state.account) {
+        saveObjectDataToStorage(KEY_STORAGE.ACCOUNT_DATA, state.account).catch(
+          (err) => console.log("Lỗi lưu AccountData:", err),
+        );
       }
     },
 
@@ -158,6 +188,10 @@ const authSlice = createSlice({
           phone: localAccount.phone || "0123456789",
           is_shipper: localAccount.is_shipper || 0, // 🔥 PHỤC HỒI CỜ SHIPPER TỪ BỘ NHỚ
           is_seller: localAccount.is_seller || 0, // 🔥 PHỤC HỒI CỜ SELLER TỪ BỘ NHỚ
+          storeId: localAccount.storeId || null,
+          storeName: localAccount.storeName || null,
+          storeAddress: localAccount.storeAddress || null,
+          storeStatus: localAccount.storeStatus || null,
         };
       } else {
         state.account = null;
@@ -194,8 +228,12 @@ const authSlice = createSlice({
             email: payload.email,
             role: payload.role,
             phone: payload.phone || "0123456789",
-            is_shipper: payload.is_shipper || 0, // 🔥 LƯU VÀO STATE SAU KHI LOGIN
-            is_seller: payload.is_seller || 0, // 🔥 LƯU VÀO STATE SAU KHI LOGIN
+            is_shipper: payload.is_shipper || 0, 
+            is_seller: payload.is_seller || 0, 
+            storeId: payload.user?.storeId || null,
+            storeName: payload.user?.storeName || null,
+            storeAddress: payload.user?.storeAddress || null,
+            storeStatus: payload.user?.storeStatus || null,
           };
 
           state.tokenData = payload.token;
