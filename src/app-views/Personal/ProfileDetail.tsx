@@ -54,10 +54,10 @@ const ProfileDetail = () => {
 
     try {
       await useCallAPI({
-        method: "PUT",
-        url: `${URL_API}/users/update-profile`,
+        method: "PATCH",
+        url: `${URL_API}/users/update-me`,
         token: tokenData,
-        data: { user_name: userName, phone: phone },
+        data: { name: userName, phone: phone },
         showToast: true,
         successTitle: "Cập nhật hồ sơ thành công!",
       });

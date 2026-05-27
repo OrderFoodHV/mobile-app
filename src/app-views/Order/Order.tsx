@@ -8,30 +8,61 @@ import {
   TextInput,
   Alert,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import colors from "@assets/colors/global_colors";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import sizes from "@assets/styles/sizes";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import { formatCurrencyToNumber } from "@app-helper/utilities";
 import showToastApp from "@app-components/CustomToast/ShowToastApp";
 import AppImage from "@app-uikits/AppImage";
 import React from "react";
+import { useSelector } from "react-redux";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
 
 const getProductKey = (product: any) =>
   Number(product?.id ?? product?.product_id);
 
 const Order: React.FC = () => {
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const token = useSelector((state: any) => state.auth.tokenData);
   const { products, type } = route.params ?? { products: [] };
-  const [address, setAddress] = useState("");
+  const [addressList, setAddressList] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [payment_method_data, setPaymentMethodData] = useState({
     label: "Thanh toán khi nhận hàng",
     value: "COD",
   });
   const { goToOrderInfo } = useNavigationComponentApp();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      const fetchAddresses = async () => {
+        if (!token) return;
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/users/addresses`,
+          token: token,
+          showToast: false,
+        });
+        if (isMounted && res && res.success !== false) {
+          setAddressList(res);
+          if (res.length > 0) {
+            setSelectedAddressId(res[0].id.toString());
+          }
+        }
+      };
+      fetchAddresses();
+      return () => {
+        isMounted = false;
+      };
+    }, [token])
+  );
 
   // 🌟 CẤU HÌNH VOUCHER & PHÍ SHIP KIỂU GRABFOOD
   const shippingFee = 15000; // Phí ship nội thành cố định
@@ -79,10 +110,12 @@ const Order: React.FC = () => {
   const finalTotalPrice = subTotalPrice + shippingFee - discountAmount;
 
   const handlePlaceOrder = () => {
-    if (!address) {
-      showToastApp({ type: "error", text: "Bạn chưa nhập địa chỉ giao hàng" });
+    const selectedItem = addressList.find(item => item.id.toString() === selectedAddressId);
+    if (!selectedItem) {
+      showToastApp({ type: "error", text: "Vui lòng chọn địa chỉ giao hàng" });
       return;
     }
+    const address = selectedItem.detail;
 
     const items = products?.map((p: any) => {
       const productKey = getProductKey(p);
@@ -131,12 +164,50 @@ const Order: React.FC = () => {
           {/* ĐỊA CHỈ */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
-            <TextInput
-              placeholder="Nhập địa chỉ giao hàng"
-              style={styles.input}
-              value={address}
-              onChangeText={setAddress}
-            />
+            {addressList.length === 0 ? (
+              <View style={styles.noAddressContainer}>
+                <Text style={styles.noAddressText}>Sếp chưa có địa chỉ giao hàng nào.</Text>
+                <TouchableOpacity
+                  style={styles.addAddressBtn}
+                  onPress={() => navigation.navigate("AddressScreen")}
+                >
+                  <Text style={styles.addAddressBtnText}>Thêm địa chỉ ngay ➕</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.addressListContainer}>
+                {addressList.map((item) => {
+                  const isSelected = selectedAddressId === item.id.toString();
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.addressItem,
+                        isSelected && styles.addressItemSelected,
+                      ]}
+                      onPress={() => setSelectedAddressId(item.id.toString())}
+                    >
+                      <View style={styles.addressRadioRow}>
+                        <View style={[
+                          styles.radioButton,
+                          isSelected && styles.radioButtonSelected
+                        ]} />
+                        <Text style={[styles.addressTitle, isSelected && { fontWeight: "700" }]}>
+                          {item.title || "Địa chỉ"}
+                        </Text>
+                      </View>
+                      <Text style={styles.addressDetail}>{item.detail}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={styles.manageAddressBtn}
+                  onPress={() => navigation.navigate("AddressScreen")}
+                >
+                  <Text style={styles.manageAddressBtnText}>Quản lý địa chỉ ⚙️</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* SẢN PHẨM */}
@@ -354,6 +425,77 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   orderButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  noAddressContainer: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  noAddressText: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 12,
+  },
+  addAddressBtn: {
+    backgroundColor: colors.blue_primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  addAddressBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  addressListContainer: {
+    gap: 10,
+  },
+  addressItem: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    backgroundColor: "#F9FAFB",
+    marginBottom: 8,
+  },
+  addressItemSelected: {
+    borderColor: colors.blue_primary,
+    backgroundColor: "#EFF6FF",
+  },
+  addressRadioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  radioButton: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#9CA3AF",
+    marginRight: 8,
+  },
+  radioButtonSelected: {
+    borderColor: colors.blue_primary,
+    backgroundColor: colors.blue_primary,
+  },
+  addressTitle: {
+    fontSize: 14,
+    color: "#1F2937",
+    fontWeight: "600",
+  },
+  addressDetail: {
+    fontSize: 13,
+    color: "#4B5563",
+    marginLeft: 24,
+  },
+  manageAddressBtn: {
+    alignSelf: "flex-end",
+    marginTop: 6,
+  },
+  manageAddressBtnText: {
+    color: colors.blue_primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
 });
 
 export default Order;

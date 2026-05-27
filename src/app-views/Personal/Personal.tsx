@@ -8,14 +8,17 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useSelector, shallowEqual, useDispatch } from "react-redux";
-import { resetAllAuth } from "src/redux/features/authSlice";
+import { resetAllAuth, updateAuthInfor } from "src/redux/features/authSlice";
 import { RootState } from "../../redux/store";
 import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import { useNavigationServices } from "@app-helper/navigateToScreens";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
+
 const Personal: React.FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
@@ -28,21 +31,111 @@ const Personal: React.FC = () => {
   const user = authState?.user; // Phải lấy ra từ đây
   console.log("Dữ liệu User trong Redux:", user);
 
+  // Tự động tải lại hồ sơ khi vào màn hình thông tin cá nhân
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      const fetchProfile = async () => {
+        const token = authState?.tokenData;
+        if (!token) return;
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/users/me`,
+          token: token,
+          showToast: false,
+        });
+        if (isMounted && res && res.success !== false) {
+          const profile = res;
+          let vehicleModel = profile.vehicle || "";
+          let licensePlate = "";
+          if (profile.vehicle && profile.vehicle.includes(",")) {
+            const parts = profile.vehicle.split(",");
+            vehicleModel = parts[0].trim();
+            licensePlate = parts[1].trim();
+          }
+          dispatch(
+            updateAuthInfor({
+              is_shipper: profile.is_shipper,
+              is_seller: profile.is_seller,
+              shipperStatus: profile.shipperStatus,
+              storeStatus: profile.storeStatus,
+              phone: profile.phone,
+              user_name: profile.name || profile.user_name,
+              vehicle: vehicleModel,
+              license_plate: licensePlate,
+              shipperPhone: profile.shipperPhone,
+            })
+          );
+        }
+      };
+      fetchProfile();
+      return () => {
+        isMounted = false;
+      };
+    }, [authState?.tokenData])
+  );
+
   // 🔥 ĐỒNG BỘ LUỒNG DỮ LIỆU MỚI: Bốc chuẩn từ authState.account theo authSlice mới
   const account = authState?.account;
   const displayName = account?.user_name || "Khách hàng HUCE";
   const displayPhone = account?.phone || "Chưa cập nhật SĐT";
-  const handleGoToShipper = () => {
+  const handleGoToShipper = async () => {
     if (!account)
       return Alert.alert("Thông báo", "Vui lòng đăng nhập!");
 
-    const isShipper = Number(account?.is_shipper) === 1;
+    const token = authState?.tokenData;
+    if (!token) return;
 
-    if (isShipper) {
-      // Đã đăng ký -> Bay thẳng vào màn chính Shipper
+    // Lấy thông tin mới nhất từ máy chủ ngay khi bấm vào nút
+    const res = await useCallAPI({
+      method: "GET",
+      url: `${URL_API}/users/me`,
+      token: token,
+      showToast: false,
+    });
+
+    let currentIsShipper = Number(account?.is_shipper) === 1;
+    let currentShipperStatus = account?.shipperStatus;
+
+    if (res && res.success !== false) {
+      const profile = res;
+      let vehicleModel = profile.vehicle || "";
+      let licensePlate = "";
+      if (profile.vehicle && profile.vehicle.includes(",")) {
+        const parts = profile.vehicle.split(",");
+        vehicleModel = parts[0].trim();
+        licensePlate = parts[1].trim();
+      }
+      dispatch(
+        updateAuthInfor({
+          is_shipper: profile.is_shipper,
+          is_seller: profile.is_seller,
+          shipperStatus: profile.shipperStatus,
+          storeStatus: profile.storeStatus,
+          phone: profile.phone,
+          user_name: profile.name || profile.user_name,
+          vehicle: vehicleModel,
+          license_plate: licensePlate,
+          shipperPhone: profile.shipperPhone,
+        })
+      );
+      currentIsShipper = Number(profile.is_shipper) === 1;
+      currentShipperStatus = profile.shipperStatus;
+    }
+
+    if (currentIsShipper) {
+      // Đã đăng ký & được duyệt -> Bay thẳng vào màn chính Shipper
       navigation.navigate("ShipperBottomContainer");
+    } else if (currentShipperStatus === "blocked") {
+      // Bị khóa -> Cho vào để thông báo khóa
+      navigation.navigate("ShipperBottomContainer");
+    } else if (currentShipperStatus === "pending") {
+      Alert.alert(
+        "Thông báo",
+        "Yêu cầu làm tài xế của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
+      );
     } else {
-      // Chưa đăng ký -> Vào màn Đăng ký (màu cam)
+      // Chưa đăng ký hoặc bị xóa -> Vào màn Đăng ký để đăng ký lại
       navigation.navigate("ShipperLanding");
     }
   };

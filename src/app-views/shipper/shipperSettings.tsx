@@ -16,14 +16,18 @@ import { Feather } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
 import * as ImagePicker from "expo-image-picker";
 import { updateAuthInfor } from "../../redux/features/authSlice";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
 
 const ShipperSettings: React.FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
-  const user = useSelector((state: any) => state.auth.account);
+  const authState = useSelector((state: any) => state.auth);
+  const user = authState?.account;
+  const token = authState?.tokenData;
 
   const [name, setName] = useState(user?.name || user?.user_name || "");
-  const [phone, setPhone] = useState(user?.phone || "");
+  const [phone, setPhone] = useState(user?.shipperPhone || user?.phone || "");
   const [vehicle, setVehicle] = useState(user?.vehicle || "");
   const [licensePlate, setLicensePlate] = useState(user?.license_plate || "");
   const [avatarUri, setAvatarUri] = useState<string | null>(
@@ -43,27 +47,56 @@ const ShipperSettings: React.FC = () => {
     }
   };
 
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = async () => {
+    if (!name.trim() || !phone.trim() || !vehicle.trim() || !licensePlate.trim()) {
+      Alert.alert("Thông báo", "Vui lòng điền đầy đủ các thông tin!");
+      return;
+    }
+
     setLoading(true);
 
-    setTimeout(() => {
-      // 🌟 ÉP REDUX CẬP NHẬT TRỰC TIẾP TẤT CẢ CÁC TRƯỜNG
+    const vehicleFull = `${vehicle.trim()}, ${licensePlate.trim()}`;
+
+    // 1. Cập nhật tên của user trong bảng users
+    await useCallAPI({
+      method: "PATCH",
+      url: `${URL_API}/users/update-me`,
+      token: token,
+      data: { name },
+      showToast: false,
+    });
+
+    // 2. Cập nhật thông tin phương tiện và số điện thoại liên hệ trong bảng shippers
+    const resShipper = await useCallAPI({
+      method: "PUT",
+      url: `${URL_API}/shippers/profile`,
+      token: token,
+      data: { vehicle: vehicleFull, phone },
+      showToast: false,
+    });
+
+    setLoading(false);
+
+    if (resShipper && resShipper.success !== false) {
+      // 🌟 Cập nhật Redux Store
       dispatch(
         updateAuthInfor({
           name: name,
           user_name: name,
-          phone: phone,
+          phone: user?.phone, // Giữ nguyên phone gốc của tài khoản
           vehicle: vehicle,
           license_plate: licensePlate,
-          avatar: avatarUri, // Nhét cái link ảnh này vào Redux
+          shipperPhone: phone,
+          avatar: avatarUri,
         }),
       );
 
-      setLoading(false);
-      Alert.alert("Thành công", "Đã cập nhật hồ sơ tài xế!", [
+      Alert.alert("Thành công", "Đã cập nhật hồ sơ tài xế thành công! 🎉", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
-    }, 800);
+    } else {
+      Alert.alert("Thất bại", resShipper?.message || "Không thể cập nhật hồ sơ tài xế lúc này.");
+    }
   };
 
   return (

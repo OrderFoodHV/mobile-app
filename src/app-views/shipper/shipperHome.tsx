@@ -14,10 +14,16 @@ import {
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useSelector } from "react-redux";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useSelector, useDispatch } from "react-redux";
 import socket from "src/app-helper/socketHelper";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
+import { updateAuthInfor } from "src/redux/features/authSlice";
 
 const ShipperHome = () => {
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
   const [isOnline, setIsOnline] = useState(false);
   // currentOrder chỉ lưu đơn đang GIAO (delivering state)
   const [currentOrder, setCurrentOrder] = useState<any>(null);
@@ -27,13 +33,121 @@ const ShipperHome = () => {
   const user = useSelector((state: any) => state.auth);
   const displayName = user?.account?.user_name || user?.name || "Tài xế";
 
+  // Kiểm tra quyền tài xế mỗi khi mở màn hình này lên
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      const checkShipperStatus = async () => {
+        const token = user?.tokenData;
+        if (!token) return;
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/users/me`,
+          token: token,
+          showToast: false,
+        });
+        if (isMounted && res && res.success !== false) {
+          const profile = res;
+          // Cập nhật lại thông tin mới nhất vào Redux để đồng bộ giao diện cá nhân
+          dispatch(
+            updateAuthInfor({
+              is_shipper: profile.is_shipper,
+              is_seller: profile.is_seller,
+              shipperStatus: profile.shipperStatus,
+              storeStatus: profile.storeStatus,
+              phone: profile.phone,
+              user_name: profile.name || profile.user_name,
+            })
+          );
+          
+          // Nếu không còn là shipper nữa (bị xóa hoặc bị khóa)
+          // Nếu bị xóa (is_shipper !== 1 và shipperStatus không phải blocked) thì đá ra ngoài bắt đăng ký lại
+          if (Number(profile.is_shipper) !== 1 && profile.shipperStatus !== "blocked") {
+            Alert.alert(
+              "Thông báo",
+              "Tài khoản của bạn đã bị hủy quyền tài xế. Vui lòng đăng ký lại!",
+              [
+                {
+                  text: "Đồng ý",
+                  onPress: () => {
+                    navigation.navigate("BottomContainer");
+                  },
+                },
+              ]
+            );
+          }
+        }
+      };
+      
+      checkShipperStatus();
+      return () => {
+        isMounted = false;
+      };
+    }, [user?.tokenData])
+  );
+
   // Dùng ref để tránh useEffect re-register socket listener mỗi lần state thay đổi
   const isOnlineRef = useRef(isOnline);
   useEffect(() => {
     isOnlineRef.current = isOnline;
   }, [isOnline]);
 
+  // Tự động chuyển thành ngoại tuyến khi thoát kênh tài xế (màn hình cha bị blur)
   useEffect(() => {
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      const unsubscribe = parentNav.addListener("blur", () => {
+        setIsOnline(false);
+      });
+      return unsubscribe;
+    }
+  }, [navigation]);
+
+  useEffect(() => {
+    const updateDbStatus = async () => {
+      const statusStr = isOnline ? "idle" : "offline";
+      const token = user?.tokenData;
+      if (token) {
+        const res = await useCallAPI({
+          method: "PATCH",
+          url: `${URL_API}/shippers/status`,
+          token: token,
+          data: { status: statusStr },
+          showToast: false,
+        });
+        if (res && res.success === false) {
+          if (res.status === 403) {
+            // Kiểm tra xem là bị khóa hay bị xóa
+            const isBlocked = user?.account?.shipperStatus === "blocked";
+            const alertMsg = isBlocked 
+              ? "Tài khoản của bạn đang bị tạm khóa!" 
+              : "Tài khoản của bạn đã bị hủy quyền tài xế. Vui lòng đăng ký lại!";
+            
+            if (isOnline) {
+              Alert.alert(
+                "Thông báo",
+                alertMsg,
+                [
+                  {
+                    text: "Đồng ý",
+                    onPress: () => {
+                      setIsOnline(false);
+                      if (!isBlocked) {
+                        navigation.navigate("BottomContainer");
+                      }
+                    },
+                  },
+                ]
+              );
+            }
+          } else {
+            setIsOnline(false);
+          }
+        }
+      }
+    };
+    updateDbStatus();
+
     if (isOnline) {
       if (!socket.connected) socket.connect();
       socket.emit("register_shipper");

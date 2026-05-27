@@ -10,57 +10,86 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-
 import HeaderApp from "@app-components/HeaderApp/HeaderApp";
 import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
+import { useSelector } from "react-redux";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
 
 const AddressScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const token = useSelector((state: any) => state.auth.tokenData);
 
-  // 🌟 KHÔI PHỤC DANH SÁCH ĐỊA CHỈ ĐỂ DEMO CHUẨN
-  const [addressList, setAddressList] = useState([
-    {
-      id: "1",
-      title: "Nhà riêng",
-      detail: "Số 55 Giải Phóng, Hai Bà Trưng, Hà Nội",
-    },
-  ]);
+  const [addressList, setAddressList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
   // State quản lý việc bật/tắt form Thêm địa chỉ mới
   const [isAdding, setIsAdding] = useState(false);
-  const [newTitle, setNewTitle] = useState("Văn phòng");
+  const [newTitle, setNewTitle] = useState("Địa chỉ");
   const [newDetail, setNewDetail] = useState("");
 
+  const loadAddresses = async () => {
+    if (!token) return;
+    setLoading(true);
+    const res = await useCallAPI({
+      method: "GET",
+      url: `${URL_API}/users/addresses`,
+      token: token,
+      showToast: false,
+    });
+    setLoading(false);
+    if (res && res.success !== false) {
+      setAddressList(res);
+    }
+  };
+
+  React.useEffect(() => {
+    loadAddresses();
+  }, [token]);
+
   // Hàm lưu khi sửa địa chỉ cũ
-  const handleSaveEdit = (id: string) => {
-    setAddressList((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, detail: editValue } : item,
-      ),
-    );
-    setEditingId(null);
-    Alert.alert("Thành công", "Đã cập nhật địa chỉ giao hàng!");
+  const handleSaveEdit = async (id: string) => {
+    if (!editValue.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập chi tiết địa chỉ!");
+      return;
+    }
+    const res = await useCallAPI({
+      method: "PUT",
+      url: `${URL_API}/users/addresses/${id}`,
+      token: token,
+      data: { address: editValue },
+      showToast: true,
+      successTitle: "Cập nhật địa chỉ thành công!",
+    });
+    if (res && res.success !== false) {
+      loadAddresses();
+      setEditingId(null);
+    }
   };
 
   // 🌟 HÀM XỬ LÝ LƯU ĐỊA CHỈ MỚI
-  const handleSaveNew = () => {
+  const handleSaveNew = async () => {
     if (!newDetail.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập chi tiết địa chỉ!");
       return;
     }
-    const newAddress = {
-      id: Date.now().toString(),
-      title: newTitle,
-      detail: newDetail,
-    };
-    setAddressList([...addressList, newAddress]);
-    setIsAdding(false);
-    setNewDetail("");
-    Alert.alert("Thành công", "Đã thêm địa chỉ mới!");
+    const res = await useCallAPI({
+      method: "POST",
+      url: `${URL_API}/users/addresses`,
+      token: token,
+      data: { address: newDetail },
+      showToast: true,
+      successTitle: "Thêm địa chỉ thành công!",
+    });
+    if (res && res.success !== false) {
+      loadAddresses();
+      setIsAdding(false);
+      setNewDetail("");
+    }
   };
 
   return (

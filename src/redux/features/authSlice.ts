@@ -1,6 +1,6 @@
 import URL_API from "@app-helper/urlAPI";
 import useCallAPI from "@app-helper/useCallAPI";
-import { saveObjectDataToStorage } from "@app-helper/useSaveDataToStorage";
+import { saveObjectDataToStorage, saveStringDataToStorage } from "@app-helper/useSaveDataToStorage";
 import {
   AccountData,
   AuthProps,
@@ -56,11 +56,15 @@ const persistAuthData = async (payload: any) => {
     storeName: payload.user?.storeName,
     storeAddress: payload.user?.storeAddress,
     storeStatus: payload.user?.storeStatus,
+    shipperStatus: payload.user?.shipperStatus,
+    vehicle: payload.user?.vehicle,
+    shipperPhone: payload.user?.shipperPhone,
+    license_plate: payload.user?.license_plate,
     password: payload?.password,
   };
 
   await saveObjectDataToStorage(KEY_STORAGE.ACCOUNT_DATA, accountData);
-  await saveObjectDataToStorage(KEY_STORAGE.USER_TOKEN, payload?.token);
+  await saveStringDataToStorage(KEY_STORAGE.USER_TOKEN, payload?.token);
 };
 
 export const loginAccount = createAsyncThunk(
@@ -131,18 +135,21 @@ const authSlice = createSlice({
           user_name: action.payload.user_name || state.account.user_name,
           name: action.payload.name || state.account.name, // Thêm dòng này để phòng sếp dùng chữ 'name'
           phone: action.payload.phone || state.account.phone,
-          is_shipper: action.payload.is_shipper ?? state.account.is_shipper,
-          is_seller: action.payload.is_seller ?? state.account.is_seller,
-          storeId: action.payload.storeId ?? state.account.storeId,
-          storeName: action.payload.storeName ?? state.account.storeName,
+          is_shipper: action.payload.is_shipper !== undefined ? action.payload.is_shipper : state.account.is_shipper,
+          is_seller: action.payload.is_seller !== undefined ? action.payload.is_seller : state.account.is_seller,
+          storeId: action.payload.storeId !== undefined ? action.payload.storeId : state.account.storeId,
+          storeName: action.payload.storeName !== undefined ? action.payload.storeName : state.account.storeName,
           storeAddress:
-            action.payload.storeAddress ?? state.account.storeAddress,
-          storeStatus: action.payload.storeStatus ?? state.account.storeStatus,
+            action.payload.storeAddress !== undefined ? action.payload.storeAddress : state.account.storeAddress,
+          storeStatus: action.payload.storeStatus !== undefined ? action.payload.storeStatus : state.account.storeStatus,
+          shipperStatus: action.payload.shipperStatus !== undefined ? action.payload.shipperStatus : state.account.shipperStatus,
 
           address: action.payload.address || state.account.address, // Dành cho Store
-          vehicle: action.payload.vehicle || state.account.vehicle, // Dành cho Shipper
+          vehicle: action.payload.vehicle !== undefined ? action.payload.vehicle : state.account.vehicle, // Dành cho Shipper
           license_plate:
-            action.payload.license_plate || state.account.license_plate, // Shipper
+            action.payload.license_plate !== undefined ? action.payload.license_plate : state.account.license_plate, // Shipper
+          shipperPhone:
+            action.payload.shipperPhone !== undefined ? action.payload.shipperPhone : state.account.shipperPhone, // Shipper
           avatar: action.payload.avatar || state.account.avatar, // Ảnh đại diện dùng chung
         };
       }
@@ -152,13 +159,17 @@ const authSlice = createSlice({
           ...state.user,
           name: action.payload.name || state.user.name,
           phone: action.payload.phone || state.user.phone,
-          is_shipper: action.payload.is_shipper ?? state.user.is_shipper,
-          is_seller: action.payload.is_seller ?? state.user.is_seller,
-          storeId: action.payload.storeId ?? state.user.storeId,
-          storeName: action.payload.storeName ?? state.user.storeName,
+          is_shipper: action.payload.is_shipper !== undefined ? action.payload.is_shipper : state.user.is_shipper,
+          is_seller: action.payload.is_seller !== undefined ? action.payload.is_seller : state.user.is_seller,
+          storeId: action.payload.storeId !== undefined ? action.payload.storeId : state.user.storeId,
+          storeName: action.payload.storeName !== undefined ? action.payload.storeName : state.user.storeName,
           storeAddress:
-            action.payload.storeAddress ?? state.user.storeAddress,
-          storeStatus: action.payload.storeStatus ?? state.user.storeStatus,
+            action.payload.storeAddress !== undefined ? action.payload.storeAddress : state.user.storeAddress,
+          storeStatus: action.payload.storeStatus !== undefined ? action.payload.storeStatus : state.user.storeStatus,
+          shipperStatus: action.payload.shipperStatus !== undefined ? action.payload.shipperStatus : state.user.shipperStatus,
+          vehicle: action.payload.vehicle !== undefined ? action.payload.vehicle : state.user.vehicle,
+          shipperPhone: action.payload.shipperPhone !== undefined ? action.payload.shipperPhone : state.user.shipperPhone,
+          license_plate: action.payload.license_plate !== undefined ? action.payload.license_plate : state.user.license_plate,
         };
       }
 
@@ -192,6 +203,10 @@ const authSlice = createSlice({
           storeName: localAccount.storeName || null,
           storeAddress: localAccount.storeAddress || null,
           storeStatus: localAccount.storeStatus || null,
+          shipperStatus: localAccount.shipperStatus || null,
+          vehicle: localAccount.vehicle || null,
+          shipperPhone: localAccount.shipperPhone || null,
+          license_plate: localAccount.license_plate || null,
         };
       } else {
         state.account = null;
@@ -234,6 +249,10 @@ const authSlice = createSlice({
             storeName: payload.user?.storeName || null,
             storeAddress: payload.user?.storeAddress || null,
             storeStatus: payload.user?.storeStatus || null,
+            shipperStatus: payload.user?.shipperStatus || null,
+            vehicle: payload.user?.vehicle || null,
+            shipperPhone: payload.user?.shipperPhone || null,
+            license_plate: payload.user?.license_plate || null,
           };
 
           state.tokenData = payload.token;

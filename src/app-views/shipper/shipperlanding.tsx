@@ -12,49 +12,54 @@ import {
   Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
+import { updateAuthInfor } from "src/redux/features/authSlice";
 
 const ShipperLanding = () => {
   const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
   const [vehicle, setVehicle] = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
   const token = useSelector((state: any) => state.auth.tokenData);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     // 1. Validate dữ liệu
-    if (!vehicle.trim() || !phone.trim()) {
+    if (!vehicle.trim() || !licensePlate.trim() || !phone.trim()) {
       Alert.alert(
         "Thiếu thông tin",
-        "Vui lòng nhập đầy đủ loại xe và số điện thoại để đăng ký.",
+        "Vui lòng nhập đầy đủ loại xe, biển số xe và số điện thoại để đăng ký.",
       );
       return;
     }
 
     // 2. Gọi API đăng ký
     setLoading(true);
+    const vehicleFull = `${vehicle.trim()}, ${licensePlate.trim()}`;
     const res = await useCallAPI({
       method: "POST",
       url: `${URL_API}/shippers/register`, // Route API đã chuẩn sau khi bỏ /api
       token: token,
-      data: { vehicle, phone },
+      data: { vehicle: vehicleFull, phone },
     });
     setLoading(false);
 
     // 3. Xử lý kết quả
-    // 3. Xử lý kết quả
     if (res?.success) {
+      // Cập nhật Redux để hiển thị trạng thái đang chờ duyệt
+      dispatch(updateAuthInfor({ shipperStatus: "pending" }));
+      
       Alert.alert(
         "Đăng ký thành công! 🎉",
-        "Đang chuyển hướng vào Kênh Tài Xế...",
+        "Yêu cầu đăng ký tài xế của bạn đang chờ phê duyệt từ Admin. Vui lòng quay lại sau!",
         [
           {
-            text: "Vào Kênh Tài Xế ngay",
+            text: "Đồng ý",
             onPress: () => {
-              // Thay vì goBack(), mình cho nó bay thẳng vào Kênh Shipper luôn
-              navigation.navigate("ShipperBottomContainer");
+              navigation.goBack();
             },
           },
         ],
@@ -85,14 +90,23 @@ const ShipperLanding = () => {
 
       <View style={styles.formContainer}>
         <Text style={styles.label}>
-          Loại xe của bạn (VD: Honda Wave, 29H1-123.45)
+          Loại xe của bạn (VD: Honda Wave, Yamaha Exciter)
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="Nhập loại xe và biển số..."
+          placeholder="Nhập tên loại xe..."
           placeholderTextColor="#9ca3af"
           value={vehicle}
           onChangeText={setVehicle}
+        />
+
+        <Text style={styles.label}>Biển số xe (VD: 29H1-123.45)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập biển số xe..."
+          placeholderTextColor="#9ca3af"
+          value={licensePlate}
+          onChangeText={setLicensePlate}
         />
 
         <Text style={styles.label}>Số điện thoại liên hệ</Text>

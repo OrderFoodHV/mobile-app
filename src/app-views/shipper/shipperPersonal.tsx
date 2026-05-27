@@ -10,13 +10,62 @@ import {
   Image,
   Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateAuthInfor } from "src/redux/features/authSlice";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
+import { RootState } from "src/redux/store";
 
 const ShipperPersonal: React.FC = () => {
   const navigation = useNavigation<any>();
-  const user = useSelector((state: any) => state.auth.account);
+  const dispatch = useDispatch();
+  const authState = useSelector((state: RootState) => state.auth as any);
+  const user = authState?.account;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      const fetchProfile = async () => {
+        const token = authState?.tokenData;
+        if (!token) return;
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/users/me`,
+          token: token,
+          showToast: false,
+        });
+        if (isMounted && res && res.success !== false) {
+          const profile = res;
+          let vehicleModel = profile.vehicle || "";
+          let licensePlate = "";
+          if (profile.vehicle && profile.vehicle.includes(",")) {
+            const parts = profile.vehicle.split(",");
+            vehicleModel = parts[0].trim();
+            licensePlate = parts[1].trim();
+          }
+          dispatch(
+            updateAuthInfor({
+              is_shipper: profile.is_shipper,
+              is_seller: profile.is_seller,
+              shipperStatus: profile.shipperStatus,
+              storeStatus: profile.storeStatus,
+              phone: profile.phone,
+              user_name: profile.name || profile.user_name,
+              vehicle: vehicleModel,
+              license_plate: licensePlate,
+              shipperPhone: profile.shipperPhone,
+            })
+          );
+        }
+      };
+      fetchProfile();
+      return () => {
+        isMounted = false;
+      };
+    }, [authState?.tokenData])
+  );
 
   // Hàm giả lập bấm vào để đổi ảnh đại diện
   const handleUploadPhoto = () => {
@@ -85,7 +134,7 @@ const ShipperPersonal: React.FC = () => {
             <View style={styles.detailRow}>
               <Feather name="phone" size={16} color="#6B7280" />
               <Text style={styles.detailText}>
-                {user?.phone || "0987.654.321"}
+                {user?.shipperPhone || user?.phone || "0987.654.321"}
               </Text>
             </View>
             <View style={styles.detailRow}>
