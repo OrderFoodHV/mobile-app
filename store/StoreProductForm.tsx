@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useSelector, shallowEqual } from "react-redux";
+import { useSelector, shallowEqual, useDispatch } from "react-redux";
 
 import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
 import { Container } from "../src/app-layout/Layout";
@@ -21,8 +21,10 @@ import colors from "../src/assets/colors/global_colors";
 import { RootState } from "../src/redux/store";
 import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
+import { resetProductTypeAll } from "../src/redux/features/productListSlice";
 
 const StoreProductForm = () => {
+  const dispatch = useDispatch<any>();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
@@ -48,7 +50,44 @@ const StoreProductForm = () => {
     editProduct?.category_id?.toString() || "1",
   ); // Mặc định là Snacks (1)
 
+  const [categories, setCategories] = useState<any[]>([]);
+  const [categorySearchText, setCategorySearchText] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/products/categories`,
+          token: tokenData,
+        });
+        let categoryList = [];
+        if (res && res.status === "success" && Array.isArray(res.data)) {
+          categoryList = res.data;
+        } else if (Array.isArray(res)) {
+          categoryList = res;
+        }
+        setCategories(categoryList);
+        // Nếu đang sửa món, gán text tìm kiếm ban đầu theo tên danh mục
+        if (editProduct && editProduct.category_id) {
+          const found = categoryList.find(
+            (cat: any) => cat.id === Number(editProduct.category_id)
+          );
+          if (found) {
+            setCategorySearchText(found.name);
+            setCategoryId(found.id.toString());
+          }
+        }
+      } catch (err) {
+        console.log("Lỗi tải danh mục:", err);
+      }
+    };
+    loadCategories();
+  }, [editProduct, tokenData]);
+
 
   const handleSelectImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -118,13 +157,27 @@ const StoreProductForm = () => {
       return;
     }
 
+    const matchedCategory = categories.find(
+      (cat) => cat.name.toLowerCase() === categorySearchText.trim().toLowerCase()
+    );
+    let selectedCategoryId = categoryId;
+    if (matchedCategory) {
+      selectedCategoryId = matchedCategory.id.toString();
+    } else {
+      Alert.alert(
+        "Danh mục không hợp lệ",
+        "Vui lòng chọn một danh mục từ danh sách gợi ý!"
+      );
+      return;
+    }
+
     setLoading(true);
     const payload = {
       name,
       price: Number(price),
       image: image || "https://via.placeholder.com/150", // Nếu không điền link ảnh thì lấy ảnh mặc định
       description: desc,
-      category_id: Number(categoryId),
+      category_id: Number(selectedCategoryId),
       available: 1, // Mặc định mở bán
     };
 
@@ -148,6 +201,8 @@ const StoreProductForm = () => {
         });
         Alert.alert("Thành công", "Đã thêm món ăn mới vào Menu!");
       }
+      // Reset danh sách món để trang chủ tự động tải lại thực đơn mới nhất
+      dispatch(resetProductTypeAll());
       navigation.goBack(); // Quay lại trang Thực đơn
     } catch (error) {
       console.log("Lỗi lưu sản phẩm:", error);
@@ -191,34 +246,52 @@ const StoreProductForm = () => {
             placeholder="VD: 45000"
           />
 
-          <Text style={styles.label}>Danh mục món ăn</Text>
-          <View style={styles.categoryContainer}>
-            {[
-              { id: 1, name: "Ăn vặt" },
-              { id: 2, name: "Đồ ăn nhanh" },
-              { id: 3, name: "Đồ uống" },
-            ].map((cat) => {
-              const isSelected = Number(categoryId) === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryPill,
-                    isSelected && styles.categoryPillActive,
-                  ]}
-                  onPress={() => setCategoryId(cat.id.toString())}
-                >
-                  <Text
-                    style={[
-                      styles.categoryPillText,
-                      isSelected && styles.categoryPillTextActive,
-                    ]}
-                  >
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <Text style={styles.label}>
+            Danh mục món ăn <Text style={{ color: "red" }}>*</Text>
+          </Text>
+          <View style={{ zIndex: 999, position: "relative", marginBottom: 16 }}>
+            <TextInput
+              style={[styles.input, { marginBottom: 0 }]}
+              value={categorySearchText}
+              onChangeText={(text) => {
+                setCategorySearchText(text);
+                setShowSuggestions(true);
+              }}
+              placeholder="Nhập tên danh mục (VD: cơm, phở...)"
+              onFocus={() => setShowSuggestions(true)}
+            />
+            {showSuggestions && categorySearchText.trim() !== "" && (
+              <View style={styles.suggestionsContainer}>
+                {categories.filter((cat) =>
+                  cat.name.toLowerCase().includes(categorySearchText.toLowerCase())
+                ).length > 0 ? (
+                  categories
+                    .filter((cat) =>
+                      cat.name.toLowerCase().includes(categorySearchText.toLowerCase())
+                    )
+                    .map((cat) => (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setCategoryId(cat.id.toString());
+                          setCategorySearchText(cat.name);
+                          setShowSuggestions(false);
+                        }}
+                      >
+                        <Feather name="tag" size={14} color="#6B7280" style={{ marginRight: 8 }} />
+                        <Text style={styles.suggestionText}>{cat.name}</Text>
+                      </TouchableOpacity>
+                    ))
+                ) : (
+                  <View style={styles.noSuggestionItem}>
+                    <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
+                      Không tìm thấy danh mục tương tự
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           <Text style={styles.label}>Hình ảnh món ăn</Text>
@@ -372,6 +445,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     fontWeight: "500",
+  },
+  suggestionsContainer: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    maxHeight: 200,
+    zIndex: 1000,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: "#1F2937",
+  },
+  noSuggestionItem: {
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    alignItems: "center",
   },
 });
 

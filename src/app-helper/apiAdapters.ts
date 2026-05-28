@@ -17,8 +17,13 @@ const CATEGORY_BY_ID: Record<string, string> = {
 
 export const normalizeImageUrl = (image?: string | null) => {
   if (!image) return "";
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  return `${domain}${image.startsWith("/") ? image : `/${image}`}`;
+  let url = image;
+  if (url.includes("localhost") || url.includes("127.0.0.1")) {
+    const apiHost = domain.replace(/^https?:\/\//, "");
+    url = url.replace(/(localhost|127\.0\.0\.1):3000/g, apiHost);
+  }
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${domain}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
 export const inferCategory = (product: any) => {

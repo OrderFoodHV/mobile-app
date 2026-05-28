@@ -44,28 +44,33 @@ const Personal: React.FC = () => {
           token: token,
           showToast: false,
         });
-        if (isMounted && res && res.success !== false) {
-          const profile = res;
-          let vehicleModel = profile.vehicle || "";
-          let licensePlate = "";
-          if (profile.vehicle && profile.vehicle.includes(",")) {
-            const parts = profile.vehicle.split(",");
-            vehicleModel = parts[0].trim();
-            licensePlate = parts[1].trim();
+        if (isMounted) {
+          if (res && (res.status === 401 || res.success === false)) {
+            dispatch(resetAllAuth());
+            navigation.replace("Login");
+          } else if (res && res.success !== false) {
+            const profile = res;
+            let vehicleModel = profile.vehicle || "";
+            let licensePlate = "";
+            if (profile.vehicle && profile.vehicle.includes(",")) {
+              const parts = profile.vehicle.split(",");
+              vehicleModel = parts[0].trim();
+              licensePlate = parts[1].trim();
+            }
+            dispatch(
+              updateAuthInfor({
+                is_shipper: profile.is_shipper,
+                is_seller: profile.is_seller,
+                shipperStatus: profile.shipperStatus,
+                storeStatus: profile.storeStatus,
+                phone: profile.phone,
+                user_name: profile.name || profile.user_name,
+                vehicle: vehicleModel,
+                license_plate: licensePlate,
+                shipperPhone: profile.shipperPhone,
+              })
+            );
           }
-          dispatch(
-            updateAuthInfor({
-              is_shipper: profile.is_shipper,
-              is_seller: profile.is_seller,
-              shipperStatus: profile.shipperStatus,
-              storeStatus: profile.storeStatus,
-              phone: profile.phone,
-              user_name: profile.name || profile.user_name,
-              vehicle: vehicleModel,
-              license_plate: licensePlate,
-              shipperPhone: profile.shipperPhone,
-            })
-          );
         }
       };
       fetchProfile();

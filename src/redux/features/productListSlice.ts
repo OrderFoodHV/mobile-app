@@ -116,9 +116,13 @@ const productListSlice = createSlice({
 
         if (type === "all") {
           state.hasMorePaginationProductTypeAll = payloadData.length >= 10;
-          state.paginationProductTypeAll = state.paginationProductTypeAll
-            ? [...state.paginationProductTypeAll, ...payloadData]
-            : payloadData;
+          if (state.paginationProductTypeAll) {
+            const existingIds = new Set(state.paginationProductTypeAll.map((item: any) => item.id));
+            const uniquePayload = payloadData.filter((item: any) => !existingIds.has(item.id));
+            state.paginationProductTypeAll = [...state.paginationProductTypeAll, ...uniquePayload];
+          } else {
+            state.paginationProductTypeAll = payloadData;
+          }
           state.currentPagePaginationProductTypeAll += 1;
           state.hasFetchedPaginationProductTypeAll = true;
         } else if (type === "snacks") {

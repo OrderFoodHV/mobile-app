@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { Alert } from "react-native";
 import { useSelector, shallowEqual, useDispatch } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RootState } from "src/redux/store";
 import useCallAPI from "../../src/app-helper/useCallAPI";
@@ -115,13 +116,19 @@ export default function StoreBottomContainer() {
     return () => clearInterval(interval);
   }, [tokenData, storeId]);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.blue_primary,
         tabBarInactiveTintColor: "#9CA3AF",
-        tabBarStyle: { backgroundColor: "#fff", paddingBottom: 5, height: 60 },
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          paddingBottom: 5 + insets.bottom,
+          height: 60 + insets.bottom,
+        },
       }}
     >
       <Tab.Screen

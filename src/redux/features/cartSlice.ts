@@ -41,6 +41,23 @@ export const getCartData = createAsyncThunk("get/cartData", async (token: string
   };
 });
 
+export const clearCartData = createAsyncThunk(
+  "delete/clearCartData",
+  async (token: string) => {
+    const response = await useCallAPI({
+      method: "DELETE",
+      url: `${URL_API}/carts/clear`,
+      token,
+      showToast: false,
+    });
+
+    return {
+      success: response?.success !== false,
+      message: response?.message ?? null,
+    };
+  }
+);
+
 export const getProductCartListData = createAsyncThunk(
   "get/productCartListData",
   async ({ token }: CartFilterParams & { token?: string }) => {
@@ -312,6 +329,21 @@ const cartSlice = createSlice({
       .addCase(getProductCartListData.rejected, (state, action) => {
         state.cartLoading = false;
         state.cartError = action.error.message || "Get data failed";
+      })
+      .addCase(clearCartData.pending, (state) => {
+        state.cartLoading = true;
+        state.cartError = null;
+      })
+      .addCase(clearCartData.fulfilled, (state, action) => {
+        state.cartLoading = false;
+        if (action.payload?.success) {
+          state.productCartListData = [];
+          state.cartData = buildCartSummary([]);
+        }
+      })
+      .addCase(clearCartData.rejected, (state, action) => {
+        state.cartLoading = false;
+        state.cartError = action.error.message || "Clear cart failed";
       });
   },
 });

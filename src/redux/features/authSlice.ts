@@ -38,7 +38,7 @@ const mapLoginResponse = (response: any, password?: string) => {
     is_seller: response.user.is_seller || 0, // Đón cờ seller
     token: response.access_token,
     refresh_token: response.refresh_token,
-    user_avatar: "",
+    user_avatar: response.user.avatar || "",
     password,
     user: response.user,
   };
@@ -60,6 +60,7 @@ const persistAuthData = async (payload: any) => {
     vehicle: payload.user?.vehicle,
     shipperPhone: payload.user?.shipperPhone,
     license_plate: payload.user?.license_plate,
+    avatar: payload.user?.avatar,
     password: payload?.password,
   };
 
@@ -104,9 +105,16 @@ export const registerAccount = createAsyncThunk(
       showToast: false,
     });
 
+    if (response && response.success === false) {
+      return {
+        success: false,
+        message: response.message || "Đăng ký thất bại",
+      };
+    }
+
     return {
-      success: response?.success,
-      message: response?.message || "Register failed",
+      success: true,
+      message: "Tạo tài khoản thành công!",
     };
   },
 );
@@ -207,6 +215,7 @@ const authSlice = createSlice({
           vehicle: localAccount.vehicle || null,
           shipperPhone: localAccount.shipperPhone || null,
           license_plate: localAccount.license_plate || null,
+          avatar: localAccount.avatar || null,
         };
       } else {
         state.account = null;
@@ -253,6 +262,7 @@ const authSlice = createSlice({
             vehicle: payload.user?.vehicle || null,
             shipperPhone: payload.user?.shipperPhone || null,
             license_plate: payload.user?.license_plate || null,
+            avatar: payload.user?.avatar || null,
           };
 
           state.tokenData = payload.token;

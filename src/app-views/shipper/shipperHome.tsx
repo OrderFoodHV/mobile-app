@@ -19,7 +19,7 @@ import { useSelector, useDispatch } from "react-redux";
 import socket from "src/app-helper/socketHelper";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
-import { updateAuthInfor } from "src/redux/features/authSlice";
+import { updateAuthInfor, resetAllAuth } from "src/redux/features/authSlice";
 
 const ShipperHome = () => {
   const navigation = useNavigation<any>();
@@ -46,19 +46,23 @@ const ShipperHome = () => {
           token: token,
           showToast: false,
         });
-        if (isMounted && res && res.success !== false) {
-          const profile = res;
-          // Cập nhật lại thông tin mới nhất vào Redux để đồng bộ giao diện cá nhân
-          dispatch(
-            updateAuthInfor({
-              is_shipper: profile.is_shipper,
-              is_seller: profile.is_seller,
-              shipperStatus: profile.shipperStatus,
-              storeStatus: profile.storeStatus,
-              phone: profile.phone,
-              user_name: profile.name || profile.user_name,
-            })
-          );
+        if (isMounted) {
+          if (res && (res.status === 401 || res.success === false)) {
+            dispatch(resetAllAuth());
+            navigation.replace("Login");
+          } else if (res && res.success !== false) {
+            const profile = res;
+            // Cập nhật lại thông tin mới nhất vào Redux để đồng bộ giao diện cá nhân
+            dispatch(
+              updateAuthInfor({
+                is_shipper: profile.is_shipper,
+                is_seller: profile.is_seller,
+                shipperStatus: profile.shipperStatus,
+                storeStatus: profile.storeStatus,
+                phone: profile.phone,
+                user_name: profile.name || profile.user_name,
+              })
+            );
           
           // Nếu không còn là shipper nữa (bị xóa hoặc bị khóa)
           // Nếu bị xóa (is_shipper !== 1 và shipperStatus không phải blocked) thì đá ra ngoài bắt đăng ký lại
@@ -77,6 +81,7 @@ const ShipperHome = () => {
             );
           }
         }
+       }
       };
       
       checkShipperStatus();

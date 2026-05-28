@@ -13,7 +13,7 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
-import { updateAuthInfor } from "src/redux/features/authSlice";
+import { updateAuthInfor, resetAllAuth } from "src/redux/features/authSlice";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { RootState } from "src/redux/store";
@@ -36,28 +36,33 @@ const ShipperPersonal: React.FC = () => {
           token: token,
           showToast: false,
         });
-        if (isMounted && res && res.success !== false) {
-          const profile = res;
-          let vehicleModel = profile.vehicle || "";
-          let licensePlate = "";
-          if (profile.vehicle && profile.vehicle.includes(",")) {
-            const parts = profile.vehicle.split(",");
-            vehicleModel = parts[0].trim();
-            licensePlate = parts[1].trim();
+        if (isMounted) {
+          if (res && (res.status === 401 || res.success === false)) {
+            dispatch(resetAllAuth());
+            navigation.replace("Login");
+          } else if (res && res.success !== false) {
+            const profile = res;
+            let vehicleModel = profile.vehicle || "";
+            let licensePlate = "";
+            if (profile.vehicle && profile.vehicle.includes(",")) {
+              const parts = profile.vehicle.split(",");
+              vehicleModel = parts[0].trim();
+              licensePlate = parts[1].trim();
+            }
+            dispatch(
+              updateAuthInfor({
+                is_shipper: profile.is_shipper,
+                is_seller: profile.is_seller,
+                shipperStatus: profile.shipperStatus,
+                storeStatus: profile.storeStatus,
+                phone: profile.phone,
+                user_name: profile.name || profile.user_name,
+                vehicle: vehicleModel,
+                license_plate: licensePlate,
+                shipperPhone: profile.shipperPhone,
+              })
+            );
           }
-          dispatch(
-            updateAuthInfor({
-              is_shipper: profile.is_shipper,
-              is_seller: profile.is_seller,
-              shipperStatus: profile.shipperStatus,
-              storeStatus: profile.storeStatus,
-              phone: profile.phone,
-              user_name: profile.name || profile.user_name,
-              vehicle: vehicleModel,
-              license_plate: licensePlate,
-              shipperPhone: profile.shipperPhone,
-            })
-          );
         }
       };
       fetchProfile();
@@ -116,7 +121,7 @@ const ShipperPersonal: React.FC = () => {
 
               <View style={styles.infoBox}>
                 <Text style={styles.nameText}>
-                  {user?.name || "Tài xế InOrder"}
+                  {user?.user_name || user?.name || "Tài xế InOrder"}
                 </Text>
                 <View style={styles.ratingBox}>
                   <Text style={styles.roleBadge}>Đối tác giao hàng</Text>

@@ -1,4 +1,4 @@
-﻿import { useOnEventCallback } from "@app-helper/hooks";
+import { useOnEventCallback } from "@app-helper/hooks";
 import {
   BottomTabBarProps,
   createBottomTabNavigator,
@@ -6,6 +6,7 @@ import {
 import { AntDesign, Entypo, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BottomTab from "./BottomTab";
 import styles from "./NavigationBottom.styles";
 import sizes from "@assets/styles/sizes";
@@ -70,6 +71,7 @@ type Props = {
 
 const BottomTabs: React.FC<Props> = ({ route }) => {
   const initialScreenName = route?.params?.screenName || MainTab.Home;
+  const insets = useSafeAreaInsets();
 
   const CustomTabar = useOnEventCallback((props: BottomTabBarProps) => {
     const { descriptors, navigation, state } = props;
@@ -78,7 +80,7 @@ const BottomTabs: React.FC<Props> = ({ route }) => {
       <View
         style={{
           borderRadius: 50,
-          height: Platform.OS === "ios" ? 85 : 70,
+          height: (Platform.OS === "ios" ? 85 : 70) + insets.bottom,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,
@@ -89,7 +91,7 @@ const BottomTabs: React.FC<Props> = ({ route }) => {
           backgroundColor: "#fff",
         }}
       >
-        <View style={styles.container}>
+        <View style={[styles.container, { bottom: insets.bottom }]}>
           <View style={styles.viewTab}>
             {state.routes.map((tabRoute, index) => {
               const { options } = descriptors[tabRoute.key];

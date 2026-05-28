@@ -15,10 +15,11 @@ import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
 import { Container } from "../src/app-layout/Layout";
 import colors from "../src/assets/colors/global_colors";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useSelector, shallowEqual } from "react-redux";
+import { useSelector, shallowEqual, useDispatch } from "react-redux";
 import { RootState } from "../src/redux/store";
 import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
+import { resetProductTypeAll } from "../src/redux/features/productListSlice";
 
 // 🌟 TRỌN BỘ 24 MÓN ĂN CHUẨN KHÍT ĐỒNG BỘ 100% VỚI DATABASE CỦA SẾP
 const ALL_DB_PRODUCTS = [
@@ -277,6 +278,7 @@ const ALL_DB_PRODUCTS = [
 ];
 
 const StoreProducts = () => {
+  const dispatch = useDispatch<any>();
   const navigation = useNavigation<any>();
   const { tokenData } = useSelector(
     (state: RootState) => state.auth,
@@ -343,9 +345,20 @@ const StoreProducts = () => {
       {
         text: "Xóa",
         style: "destructive",
-        onPress: () => {
-          setProducts(products.filter((p) => p.id !== productId));
-          Alert.alert("Thành công", "Đã xóa món ăn");
+        onPress: async () => {
+          try {
+            await useCallAPI({
+              method: "DELETE",
+              url: `${URL_API}/store/${storeId}/products/${productId}`,
+              token: tokenData,
+            });
+            setProducts(products.filter((p) => p.id !== productId));
+            dispatch(resetProductTypeAll());
+            Alert.alert("Thành công", "Đã xóa món ăn khỏi thực đơn!");
+          } catch (e) {
+            console.log("Lỗi xóa món ăn:", e);
+            Alert.alert("Lỗi", "Không thể xóa món ăn khỏi server.");
+          }
         },
       },
     ]);

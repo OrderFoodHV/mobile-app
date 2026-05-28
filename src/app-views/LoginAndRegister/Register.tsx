@@ -1,7 +1,7 @@
 import ButtonBase from "@app-components/ButtonBase/ButtonBase";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
-import { Fragment, memo, useEffect, useState } from "react";
+import { Fragment, memo, useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { Formik } from "formik";
 import { registerSchema } from "./schema/validationForm";
@@ -24,6 +25,8 @@ import AppLoading from "@app-components/AppLoading/AppLoading";
 import {
   registerAccount,
   resetRegisterResponse,
+  loginAccount,
+  resetLoginResponse,
 } from "@redux/features/authSlice";
 import { AppDispatch, RootState } from "@redux/store";
 import AppImage from "@app-uikits/AppImage";
@@ -36,41 +39,45 @@ const Register: React.FC<RegisterProps> = () => {
   const { goToLogin, goToBottomContainer } = useNavigationMainApp();
   const { replaceScreen } = useNavigationServices();
   const dispatch = useDispatch<AppDispatch>();
-  const { registerResponse, authLoading } = useSelector(
+  const { registerResponse, loginResponse, authLoading } = useSelector(
     (state: RootState) => state.auth,
   );
 
-  const [formData, setFormData] = useState({
-    user_name: "",
-    email: "",
-    password: "",
-  });
+  const regCredentialsRef = useRef<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     if (registerResponse?.success === true) {
-      replaceScreen("BottomContainer");
-    }
-  }, [registerResponse]);
-
-  const handleTextChange = (name: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmitForm = () => {
-    const isValid = Object.values(formData).every(
-      (value) => value.trim() !== "",
-    );
-    if (isValid) {
+      Alert.alert(
+        "Đăng ký thành công",
+        "Chào mừng bạn đến với Food App! Đang tự động đăng nhập...",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              if (regCredentialsRef.current) {
+                dispatch(resetRegisterResponse());
+                dispatch(loginAccount(regCredentialsRef.current));
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } else if (registerResponse?.success === false) {
+      Alert.alert("Đăng ký thất bại", registerResponse.message || "Vui lòng thử lại.");
       dispatch(resetRegisterResponse());
-      dispatch(registerAccount(formData));
-    }
-  };
-
-  useEffect(() => {
-    if (registerResponse?.success === true) {
-      goToLogin();
     }
   }, [registerResponse]);
+
+  useEffect(() => {
+    if (loginResponse?.success === true) {
+      dispatch(resetLoginResponse());
+      replaceScreen("BottomContainer");
+    } else if (loginResponse?.success === false) {
+      Alert.alert("Đăng nhập thất bại", loginResponse.message || "Không thể tự động đăng nhập.");
+      dispatch(resetLoginResponse());
+    }
+  }, [loginResponse]);
 
   return (
     <KeyboardAvoidingView
@@ -89,8 +96,16 @@ const Register: React.FC<RegisterProps> = () => {
           validationSchema={registerSchema}
           onSubmit={(values) => {
             console.log("👉 Formik gom đủ đồ nè:", values);
+            regCredentialsRef.current = { email: values.email, password: values.password };
             dispatch(resetRegisterResponse());
-            dispatch(registerAccount(values));
+            dispatch(
+              registerAccount({
+                email: values.email,
+                user_name: values.name,
+                password: values.password,
+                phone: values.phone,
+              })
+            );
           }}
         >
           {/* 👇 ĐÂY NÀY! CÁI DÒNG SẾP LỠ TAY XÓA MẤT LÀ DÒNG NÀY NÀY 👇 */}
@@ -144,12 +159,9 @@ const Register: React.FC<RegisterProps> = () => {
                       errors.name && { borderColor: "red", borderWidth: 1 },
                     ]}
                     placeholder="Enter Name"
-                    value={formData.user_name}
-                    onChangeText={(text) => {
-                      handleTextChange("user_name", text);
-                      setFieldValue("name", text);
-                    }}
-                    onBlur={() => handleBlur("name")}
+                    value={values.name}
+                    onChangeText={handleChange("name")}
+                    onBlur={handleBlur("name")}
                   />
                   {errors.name && (
                     <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
@@ -167,12 +179,9 @@ const Register: React.FC<RegisterProps> = () => {
                       errors.email && { borderColor: "red", borderWidth: 1 },
                     ]}
                     placeholder="Enter Email"
-                    value={formData.email}
-                    onChangeText={(text) => {
-                      handleTextChange("email", text);
-                      setFieldValue("email", text);
-                    }}
-                    onBlur={() => handleBlur("email")}
+                    value={values.email}
+                    onChangeText={handleChange("email")}
+                    onBlur={handleBlur("email")}
                   />
                   {errors.email && (
                     <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
@@ -205,13 +214,10 @@ const Register: React.FC<RegisterProps> = () => {
                       errors.password && { borderColor: "red", borderWidth: 1 },
                     ]}
                     placeholder="Enter Password"
-                    value={formData.password}
+                    value={values.password}
                     secureTextEntry
-                    onChangeText={(text) => {
-                      handleTextChange("password", text);
-                      setFieldValue("password", text);
-                    }}
-                    onBlur={() => handleBlur("password")}
+                    onChangeText={handleChange("password")}
+                    onBlur={handleBlur("password")}
                   />
                   {errors.password && (
                     <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
@@ -264,6 +270,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingLeft: 10,
     backgroundColor: "white",
+  },
+  errorText: {
+    color: "#FF0707",
+    fontSize: sizes._10sdp,
   },
 });
 

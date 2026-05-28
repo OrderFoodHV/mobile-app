@@ -22,76 +22,102 @@ import { filterProducts } from "@app-helper/apiAdapters";
 import { useAppTheme } from "src/app-context/ThemeContext";
 const PAGE_SIZE = 6;
 
-const categoryMap: Record<string, string> = {
-  "Đồ ăn nhanh": "fast_food",
-  "Đồ uống": "snacks",
-  "Ăn vặt": "drinks",
-};
-
 const Search = () => {
   const { goToCart, goToProductDetail } = useNavigationComponentApp();
   const { themeColors } = useAppTheme();
   const [textSearch, setTextSearch] = useState("");
-  const [categorySearch, setCategorySearch] = useState<string | null>(null);
+  const [categorySearchInput, setCategorySearchInput] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  const foodCategories = ["Đồ ăn nhanh", "Đồ uống", "Ăn vặt"];
-
   useEffect(() => {
-    const loadProducts = async () => {
+    const loadData = async () => {
       setLoading(true);
-      const response = await useCallAPI({
-        method: "GET",
-        url: `${URL_API}/products`,
-        showToast: false,
-      });
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          useCallAPI({
+            method: "GET",
+            url: `${URL_API}/products`,
+            showToast: false,
+          }),
+          useCallAPI({
+            method: "GET",
+            url: `${URL_API}/products/categories`,
+            showToast: false,
+          })
+        ]);
 
-      if (Array.isArray(response)) {
-        setAllProducts(response);
+        if (Array.isArray(productsRes)) {
+          setAllProducts(productsRes);
+        } else if (productsRes && Array.isArray(productsRes.data)) {
+          setAllProducts(productsRes.data);
+        }
+
+        if (Array.isArray(categoriesRes)) {
+          setCategories(categoriesRes);
+        } else if (categoriesRes && Array.isArray(categoriesRes.data)) {
+          setCategories(categoriesRes.data);
+        }
+      } catch (err) {
+        console.log("Error loading search data:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
-    loadProducts();
+    loadData();
   }, []);
 
   const getDataFilter = (reset = false) => {
     if (loading || (!hasMore && !reset)) return;
 
     const currentPage = reset ? 1 : page;
-    const filtered = filterProducts(allProducts, {
-      page: currentPage,
-      limit: PAGE_SIZE,
-      type: (categorySearch || "all") as
-        | "all"
-        | "drinks"
-        | "fast_food"
-        | "snacks",
-      filterColumn: "name",
-      filterValue: textSearch || "",
-    });
+    let filtered = allProducts;
+
+    // 1. Lọc theo tên món ăn
+    if (textSearch.trim() !== "") {
+      const term = textSearch.trim().toLowerCase();
+      filtered = filtered.filter((p) =>
+        (p.name || "").toLowerCase().includes(term) ||
+        (p.description || "").toLowerCase().includes(term)
+      );
+    }
+
+    // 2. Lọc theo tên danh mục
+    if (categorySearchInput.trim() !== "") {
+      const term = categorySearchInput.trim().toLowerCase();
+      const matchingIds = categories
+        .filter((c) => (c.name || "").toLowerCase().includes(term))
+        .map((c) => Number(c.id));
+
+      filtered = filtered.filter((p) => matchingIds.includes(Number(p.category_id)));
+    }
+
+    // 3. Phân trang
+    const limit = PAGE_SIZE;
+    const start = (currentPage - 1) * limit;
+    const paginated = filtered.slice(start, start + limit);
 
     if (reset) {
-      setProducts(filtered);
+      setProducts(paginated);
       setPage(2);
     } else {
-      setProducts((prev) => [...prev, ...filtered]);
+      setProducts((prev) => [...prev, ...paginated]);
       setPage((prev) => prev + 1);
     }
 
-    setHasMore(filtered.length === PAGE_SIZE);
+    setHasMore(filtered.length > currentPage * limit);
   };
 
   useEffect(() => {
     if (!allProducts.length) return;
     const delay = setTimeout(() => getDataFilter(true), 300);
     return () => clearTimeout(delay);
-  }, [textSearch, categorySearch, allProducts]);
+  }, [textSearch, categorySearchInput, allProducts, categories]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) getDataFilter();
@@ -114,14 +140,14 @@ const Search = () => {
           source={{ uri: item.image }}
           style={{ width: "100%", height: sizes._160sdp, borderRadius: 8 }}
         />
-        <Text style={{ fontWeight: "bold", fontSize: 16, marginTop: 8 }}>
+        <Text style={{ fontWeight: "bold", fontSize: 16, marginTop: 8 }} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={{ color: "#888", marginVertical: 4 }}>
+        <Text style={{ color: "#888", marginVertical: 4 }} numberOfLines={2}>
           {item.description}
         </Text>
         <Text style={{ color: "#e67e22", fontWeight: "600" }}>
-          {item.price.toLocaleString()} đ
+          {Number(item.price || 0).toLocaleString()} đ
         </Text>
       </View>
     </TouchableOpacity>
@@ -164,6 +190,7 @@ const Search = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Thanh tìm kiếm món ăn */}
         <View
           style={{
             marginTop: 12,
@@ -183,47 +210,27 @@ const Search = () => {
             style={{ marginLeft: 8, flex: 1 }}
           />
         </View>
-      </View>
 
-      <View style={{ marginTop: 10 }}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={foodCategories}
-          keyExtractor={(item, index) => index.toString()}
-          contentContainerStyle={{ paddingHorizontal: 10 }}
-          renderItem={({ item }) => {
-            const mappedCategory = categoryMap[item];
-            const isActive = categorySearch === mappedCategory;
-
-            return (
-              <TouchableOpacity
-                onPress={() =>
-                  setCategorySearch(isActive ? null : mappedCategory)
-                }
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 14,
-                  marginRight: 8,
-                  borderRadius: 20,
-                  backgroundColor: isActive
-                    ? colors.blue_primary
-                    : colors.white,
-                  elevation: 2,
-                }}
-              >
-                <Text
-                  style={{
-                    color: isActive ? colors.white : colors.gray_primary,
-                    fontWeight: "500",
-                  }}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            );
+        {/* Thanh tìm kiếm danh mục */}
+        <View
+          style={{
+            marginTop: 8,
+            backgroundColor: colors.white,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            flexDirection: "row",
+            alignItems: "center",
           }}
-        />
+        >
+          <Feather name="tag" size={18} color={colors.gray_primary} />
+          <TextInput
+            placeholder="Tìm theo danh mục (VD: cơm, uống, vặt...)..."
+            value={categorySearchInput}
+            onChangeText={setCategorySearchInput}
+            style={{ marginLeft: 8, flex: 1 }}
+          />
+        </View>
       </View>
 
       <FlatList

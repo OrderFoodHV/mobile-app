@@ -55,18 +55,50 @@ const ShipperSettings: React.FC = () => {
 
     setLoading(true);
 
-    const vehicleFull = `${vehicle.trim()}, ${licensePlate.trim()}`;
+    let uploadedAvatarUrl = user?.avatar || null;
 
-    // 1. Cập nhật tên của user trong bảng users
+    // 1. Upload ảnh lên Backend nếu có thay đổi ảnh đại diện
+    if (avatarUri && !avatarUri.startsWith("http")) {
+      const formData = new FormData() as any;
+      const uriParts = avatarUri.split(".");
+      const fileType = uriParts[uriParts.length - 1];
+
+      formData.append("image", {
+        uri: avatarUri,
+        name: `avatar-${Date.now()}.${fileType}`,
+        type: `image/${fileType === "jpg" ? "jpeg" : fileType}`,
+      });
+
+      const uploadRes = await useCallAPI({
+        method: "POST",
+        url: `${URL_API}/upload`,
+        token: token,
+        data: formData,
+        typeHeaders: "multipart/form-data",
+        showToast: false,
+      });
+
+      if (uploadRes && uploadRes.success) {
+        uploadedAvatarUrl = uploadRes.imageUrl;
+      } else {
+        Alert.alert("Lỗi", "Không thể tải ảnh đại diện lên hệ thống!");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 2. Cập nhật ảnh đại diện mới vào bảng users
     await useCallAPI({
       method: "PATCH",
       url: `${URL_API}/users/update-me`,
       token: token,
-      data: { name },
+      data: { avatar: uploadedAvatarUrl },
       showToast: false,
     });
 
-    // 2. Cập nhật thông tin phương tiện và số điện thoại liên hệ trong bảng shippers
+    const vehicleFull = `${vehicle.trim()}, ${licensePlate.trim()}`;
+
+    // 3. Cập nhật thông tin phương tiện và số điện thoại liên hệ trong bảng shippers
     const resShipper = await useCallAPI({
       method: "PUT",
       url: `${URL_API}/shippers/profile`,
@@ -81,13 +113,10 @@ const ShipperSettings: React.FC = () => {
       // 🌟 Cập nhật Redux Store
       dispatch(
         updateAuthInfor({
-          name: name,
-          user_name: name,
-          phone: user?.phone, // Giữ nguyên phone gốc của tài khoản
           vehicle: vehicle,
           license_plate: licensePlate,
           shipperPhone: phone,
-          avatar: avatarUri,
+          avatar: uploadedAvatarUrl,
         }),
       );
 
@@ -129,8 +158,12 @@ const ShipperSettings: React.FC = () => {
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Họ và tên</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} />
+          <Text style={styles.label}>Họ và tên (Cố định theo tài khoản)</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: "#E5E7EB", color: "#6B7280" }]}
+            value={name}
+            editable={false}
+          />
 
           <Text style={styles.label}>Số điện thoại</Text>
           <TextInput

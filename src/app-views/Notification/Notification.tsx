@@ -84,7 +84,7 @@ const Notification: React.FC = () => {
           style={{ marginTop: 40 }}
         />
       ) : (
-        <Content>
+        <View style={{ flex: 1 }}>
           <FlatList
             data={notifications}
             keyExtractor={(item, index) =>
@@ -149,7 +149,7 @@ const Notification: React.FC = () => {
               </View>
             )}
           />
-        </Content>
+        </View>
       )}
     </Container>
   );
