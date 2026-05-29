@@ -5,8 +5,8 @@ import {
   StyleProp,
   ViewStyle,
   View,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Props {
   children?: React.ReactNode;
@@ -16,8 +16,8 @@ interface Props {
 
 const Container: React.FC<Props> = ({ children, style, ...props }) => {
   return (
-    <SafeAreaView style={styles.container}>
-      <View {...props} style={[{ width: '100%', height: '100%' }, style]}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+      <View {...props} style={[{ width: '100%', flex: 1 }, style]}>
         {children}
       </View>
     </SafeAreaView>

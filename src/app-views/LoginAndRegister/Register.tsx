@@ -13,6 +13,7 @@ import {
   ScrollView,
   Platform,
   Alert,
+  ImageBackground,
 } from "react-native";
 import { Formik } from "formik";
 import { registerSchema } from "./schema/validationForm";
@@ -80,186 +81,199 @@ const Register: React.FC<RegisterProps> = () => {
   }, [loginResponse]);
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, marginVertical: 20 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+    <ImageBackground
+      source={require("@assets/images/auth_bg.jpg")}
+      style={{ flex: 1 }}
+      resizeMode="cover"
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <Formik
-          initialValues={{
-            name: "",
-            email: "",
-            password: "",
-            phone: "",
-          }}
-          validationSchema={registerSchema}
-          onSubmit={(values) => {
-            console.log("👉 Formik gom đủ đồ nè:", values);
-            regCredentialsRef.current = { email: values.email, password: values.password };
-            dispatch(resetRegisterResponse());
-            dispatch(
-              registerAccount({
-                email: values.email,
-                user_name: values.name,
-                password: values.password,
-                phone: values.phone,
-              })
-            );
-          }}
-        >
-          {/* 👇 ĐÂY NÀY! CÁI DÒNG SẾP LỠ TAY XÓA MẤT LÀ DÒNG NÀY NÀY 👇 */}
-          {({
-            handleChange,
-            handleBlur,
-            handleSubmit,
-            setFieldValue,
-            values,
-            errors,
-            touched,
-          }) => (
-            <View
-              style={{
-                flex: 1,
-                marginHorizontal: 15,
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <AppImage
-                source={require("@assets/images/logoLvalegend.png")}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+          <Formik
+            initialValues={{
+              name: "",
+              email: "",
+              password: "",
+              phone: "",
+            }}
+            validationSchema={registerSchema}
+            onSubmit={(values) => {
+              console.log("👉 Formik gom đủ đồ nè:", values);
+              regCredentialsRef.current = { email: values.email, password: values.password };
+              dispatch(resetRegisterResponse());
+              dispatch(
+                registerAccount({
+                  email: values.email,
+                  user_name: values.name,
+                  password: values.password,
+                  phone: values.phone,
+                })
+              );
+            }}
+          >
+            {/* 👇 ĐÂY NÀY! CÁI DÒNG SẾP LỠ TAY XÓA MẤT LÀ DÒNG NÀY NÀY 👇 */}
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              setFieldValue,
+              values,
+              errors,
+              touched,
+            }) => (
+              <View
                 style={{
-                  width: sizes._80sdp,
-                  height: sizes._82sdp,
-                  borderRadius: 9999,
+                  marginHorizontal: 20,
+                  marginVertical: 40,
+                  padding: 24,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(255, 255, 255, 0.92)",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 15,
+                  elevation: 10,
+                  alignItems: "center",
+                  gap: 12,
                 }}
-                resizeMode={"cover"}
-              />
-              <Text
-                style={{ fontSize: sizes._12sdp, color: colors.blue_primary }}
               >
-                Welcome to Food App
-              </Text>
-              <Text
-                style={{ fontSize: sizes._20sdp, color: colors.blue_primary }}
-              >
-                Create your account
-              </Text>
+                <AppImage
+                  source={require("@assets/images/shopeefake_logo.png")}
+                  style={{
+                    width: sizes._80sdp,
+                    height: sizes._82sdp,
+                    borderRadius: 9999,
+                  }}
+                  resizeMode={"cover"}
+                />
+                <Text
+                  style={{ fontSize: sizes._12sdp, color: colors.blue_primary, fontWeight: "bold" }}
+                >
+                  ShopeeFake
+                </Text>
+                <Text
+                  style={{ fontSize: sizes._20sdp, color: colors.blue_primary, fontWeight: "bold" }}
+                >
+                  Create your account
+                </Text>
 
-              <View style={{ width: "90%", gap: 10 }}>
-                {/* Name Field */}
-                <View style={{ gap: 2 }}>
-                  <Text style={{ color: errors.name ? "red" : "black" }}>
-                    Name
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.text_input_style,
-                      errors.name && { borderColor: "red", borderWidth: 1 },
-                    ]}
-                    placeholder="Enter Name"
-                    value={values.name}
-                    onChangeText={handleChange("name")}
-                    onBlur={handleBlur("name")}
-                  />
-                  {errors.name && (
-                    <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
-                      {errors.name}
+                <View style={{ width: "100%", gap: 10 }}>
+                  {/* Name Field */}
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ fontWeight: "600", color: errors.name ? "red" : "#333" }}>
+                      Name
                     </Text>
-                  )}
-                </View>
-
-                {/* Email Field */}
-                <View style={{ gap: 2 }}>
-                  <Text>Email</Text>
-                  <TextInput
-                    style={[
-                      styles.text_input_style,
-                      errors.email && { borderColor: "red", borderWidth: 1 },
-                    ]}
-                    placeholder="Enter Email"
-                    value={values.email}
-                    onChangeText={handleChange("email")}
-                    onBlur={handleBlur("email")}
-                  />
-                  {errors.email && (
-                    <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
-                      {errors.email}
-                    </Text>
-                  )}
-                </View>
-                {/* Ô nhập Số điện thoại */}
-                <View style={{ gap: 2 }}>
-                  <Text>Phone Number</Text>
-                  <TextInput
-                    style={[styles.text_input_style /* ... style lỗi nếu có */]}
-                    placeholder="Enter Phone Number"
-                    value={values.phone}
-                    keyboardType="phone-pad" // Mở bàn phím số
-                    onChangeText={handleChange("phone")}
-                    onBlur={handleBlur("phone")}
-                  />
-                  {/* Hiện lỗi Formik nếu có */}
-                  {touched.phone && errors.phone && (
-                    <Text style={styles.errorText}>{errors.phone}</Text>
-                  )}
-                </View>
-                {/* Password Field */}
-                <View style={{ gap: 2 }}>
-                  <Text>Password</Text>
-                  <TextInput
-                    style={[
-                      styles.text_input_style,
-                      errors.password && { borderColor: "red", borderWidth: 1 },
-                    ]}
-                    placeholder="Enter Password"
-                    value={values.password}
-                    secureTextEntry
-                    onChangeText={handleChange("password")}
-                    onBlur={handleBlur("password")}
-                  />
-                  {errors.password && (
-                    <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
-                      {errors.password}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Sign Up Button */}
-                <View style={{ marginTop: 5, gap: 22 }}>
-                  <ButtonBase
-                    title="Sign Up"
-                    paddingHorizontal={10}
-                    paddingVertical={10}
-                    backgroundColor={colors.blue_primary}
-                    onPress={() => handleSubmit()}
-                  />
-
-                  <View style={[styles_c.row_center, { gap: 5 }]}>
-                    <Text style={{ fontSize: sizes._13sdp }}>
-                      Do you have an account?
-                    </Text>
-                    <TouchableOpacity onPress={goToLogin}>
-                      <Text
-                        style={{
-                          fontSize: sizes._13sdp,
-                          color: colors.blue_primary,
-                          fontWeight: "bold",
-                        }}
-                      >
-                        Sign In
+                    <TextInput
+                      style={[
+                        styles.text_input_style,
+                        errors.name && { borderColor: "red", borderWidth: 1 },
+                      ]}
+                      placeholder="Enter Name"
+                      value={values.name}
+                      onChangeText={handleChange("name")}
+                      onBlur={handleBlur("name")}
+                    />
+                    {errors.name && (
+                      <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
+                        {errors.name}
                       </Text>
-                    </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Email Field */}
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ fontWeight: "600", color: "#333" }}>Email</Text>
+                    <TextInput
+                      style={[
+                        styles.text_input_style,
+                        errors.email && { borderColor: "red", borderWidth: 1 },
+                      ]}
+                      placeholder="Enter Email"
+                      value={values.email}
+                      onChangeText={handleChange("email")}
+                      onBlur={handleBlur("email")}
+                    />
+                    {errors.email && (
+                      <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
+                        {errors.email}
+                      </Text>
+                    )}
+                  </View>
+                  {/* Ô nhập Số điện thoại */}
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ fontWeight: "600", color: "#333" }}>Phone Number</Text>
+                    <TextInput
+                      style={[styles.text_input_style /* ... style lỗi nếu có */]}
+                      placeholder="Enter Phone Number"
+                      value={values.phone}
+                      keyboardType="phone-pad" // Mở bàn phím số
+                      onChangeText={handleChange("phone")}
+                      onBlur={handleBlur("phone")}
+                    />
+                    {/* Hiện lỗi Formik nếu có */}
+                    {touched.phone && errors.phone && (
+                      <Text style={styles.errorText}>{errors.phone}</Text>
+                    )}
+                  </View>
+                  {/* Password Field */}
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ fontWeight: "600", color: "#333" }}>Password</Text>
+                    <TextInput
+                      style={[
+                        styles.text_input_style,
+                        errors.password && { borderColor: "red", borderWidth: 1 },
+                      ]}
+                      placeholder="Enter Password"
+                      value={values.password}
+                      secureTextEntry
+                      onChangeText={handleChange("password")}
+                      onBlur={handleBlur("password")}
+                    />
+                    {errors.password && (
+                      <Text style={{ color: "#FF0707", fontSize: sizes._10sdp }}>
+                        {errors.password}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Sign Up Button */}
+                  <View style={{ marginTop: 5, gap: 22 }}>
+                    <ButtonBase
+                      title="Sign Up"
+                      paddingHorizontal={10}
+                      paddingVertical={10}
+                      backgroundColor={colors.blue_primary}
+                      onPress={() => handleSubmit()}
+                    />
+
+                    <View style={[styles_c.row_center, { gap: 5 }]}>
+                      <Text style={{ fontSize: sizes._13sdp, color: "#555" }}>
+                        Do you have an account?
+                      </Text>
+                      <TouchableOpacity onPress={goToLogin}>
+                        <Text
+                          style={{
+                            fontSize: sizes._13sdp,
+                            color: colors.blue_primary,
+                            fontWeight: "bold",
+                          }}
+                        >
+                          Sign In
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          )}
-        </Formik>
-      </ScrollView>
-      <Fragment>{authLoading && <AppLoading loading={authLoading} />}</Fragment>
-    </KeyboardAvoidingView>
+            )}
+          </Formik>
+        </ScrollView>
+        <Fragment>{authLoading && <AppLoading loading={authLoading} />}</Fragment>
+      </KeyboardAvoidingView>
+    </ImageBackground>
   );
 };
 

@@ -7,9 +7,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import colors from "../src/assets/colors/global_colors";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -99,11 +99,11 @@ const StoreDashboard = () => {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color={colors.blue_primary}
+            color="#F97316"
             style={{ marginTop: 50 }}
           />
         ) : (
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
             {/* KHỐI 1: CÔNG TẮC */}
             <View style={styles.statusCard}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -156,7 +156,7 @@ const StoreDashboard = () => {
                   ]}
                 >
                   <Text
-                    style={[styles.statNumber, { color: colors.blue_primary }]}
+                    style={[styles.statNumber, { color: "#F97316" }]}
                   >
                     {summary.completed_orders}
                   </Text>
@@ -178,7 +178,7 @@ const StoreDashboard = () => {
                 style={styles.menuItem}
                 onPress={() => navigation.navigate("StoreProducts")}
               >
-                <Feather name="list" size={28} color={colors.blue_primary} />
+                <Feather name="list" size={28} color="#F97316" />
                 <Text style={styles.menuText}>Thực đơn</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem}>
@@ -199,7 +199,7 @@ const StoreDashboard = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#3498db", // Sếp có thể đổi thành colors.blue_primary nếu muốn
+    backgroundColor: "#F97316", // Đã đổi sang màu cam chủ đạo
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

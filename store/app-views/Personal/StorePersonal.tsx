@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
@@ -25,14 +25,14 @@ const StorePersonal: React.FC = () => {
 
       <View style={styles.container}>
         <ScrollView
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
           {/* THÔNG TIN CHỦ QUÁN & CỬA HÀNG */}
           <View style={styles.profileCard}>
             <View style={styles.profileHeader}>
               <View style={styles.avatarCircle}>
-                <Feather name="home" size={32} color="#3B82F6" />
+                <Feather name="home" size={32} color="#F97316" />
               </View>
               <View style={styles.infoBox}>
                 <Text style={styles.nameText}>
@@ -137,7 +137,7 @@ const StorePersonal: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#3498db",
+    backgroundColor: "#F97316",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#FFF7ED",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 4,
   },
-  roleBadge: { fontSize: 14, color: "#3B82F6", fontWeight: "600" },
+  roleBadge: { fontSize: 14, color: "#F97316", fontWeight: "600" },
   divider: { height: 1, backgroundColor: "#E5E7EB", marginVertical: 15 },
   detailRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   detailText: { marginLeft: 10, fontSize: 15, color: "#4B5563", flex: 1 },

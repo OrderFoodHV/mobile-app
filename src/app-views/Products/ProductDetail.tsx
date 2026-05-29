@@ -1,17 +1,19 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from "react-native";
 import { RouteProp, useRoute, useNavigation } from "@react-navigation/native";
 import styles_c from "@assets/styles/styles_c";
 import colors from "@assets/colors/global_colors";
-import { Container, Content } from "@app-layout/Layout";
+import { Container } from "@app-layout/Layout";
 import AppImage from '@app-uikits/AppImage';
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import sizes from "@assets/styles/sizes";
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@redux/store";
-import { addProductInCart, clearCartData } from "@redux/features/cartSlice";
+import { addProductInCart, clearCartData, getCartData } from "@redux/features/cartSlice";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
 
 type Product = {
   id: any;
@@ -47,12 +49,74 @@ const ProductDetail: React.FC = () => {
     shallowEqual
   );
 
-  // Get the latest joined store_name / store_address from Redux store using product.id
   const fullProduct = React.useMemo(() => {
     if (!paginationProductTypeAll) return product;
     const found = paginationProductTypeAll.find((p: any) => Number(p.id) === Number(product.id));
     return found || product;
   }, [paginationProductTypeAll, product]);
+
+  const [isFavorite, setIsFavorite] = React.useState(false);
+  const [loadingFavorite, setLoadingFavorite] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!tokenData || !fullProduct?.id) return;
+      const res = await useCallAPI({
+        method: "GET",
+        url: `${URL_API}/users/favorites`,
+        token: tokenData,
+        showToast: false,
+      });
+      if (res && Array.isArray(res)) {
+        const found = res.some((item: any) => Number(item.id) === Number(fullProduct.id));
+        setIsFavorite(found);
+      }
+    };
+    checkFavoriteStatus();
+  }, [tokenData, fullProduct?.id]);
+
+  const toggleFavorite = async () => {
+    if (!tokenData) {
+      Alert.alert("Thông báo", "Vui lòng đăng nhập để sử dụng tính năng này!");
+      return;
+    }
+    if (loadingFavorite) return;
+    setLoadingFavorite(true);
+
+    if (isFavorite) {
+      const res = await useCallAPI({
+        method: "DELETE",
+        url: `${URL_API}/users/favorites/${fullProduct.id}`,
+        token: tokenData,
+        showToast: true,
+        successTitle: "Đã xóa khỏi danh sách yêu thích!",
+      });
+      if (res && res.success !== false) {
+        setIsFavorite(false);
+      }
+    } else {
+      const res = await useCallAPI({
+        method: "POST",
+        url: `${URL_API}/users/favorites`,
+        token: tokenData,
+        data: { product_id: fullProduct.id },
+        showToast: true,
+        successTitle: "Đã thêm vào danh sách yêu thích!",
+      });
+      if (res && res.success !== false) {
+        setIsFavorite(true);
+      }
+    }
+    setLoadingFavorite(false);
+  };
+
+  React.useEffect(() => {
+    if (tokenData) {
+      dispatch(getCartData(tokenData));
+    }
+  }, [tokenData, dispatch]);
+
+
 
   const performAddCart = () => {
     if (tokenData && cartData && cartData?.id) {
@@ -71,13 +135,11 @@ const ProductDetail: React.FC = () => {
   const onPressAddCart = () => {
     if (!tokenData) return;
 
-    // Check if cart has items from another store
     const hasDifferentStoreItem = productCartListData && productCartListData.length > 0 && productCartListData.some(
       (item: any) => Number(item.store_id) !== Number(fullProduct.store_id)
     );
 
     if (hasDifferentStoreItem) {
-      // Find the name of the store currently in the cart
       const currentStoreName = (productCartListData[0] as any).store_name || "quán khác";
 
       Alert.alert(
@@ -104,7 +166,6 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  // Filter other products from the same store
   const storeProducts = React.useMemo(() => {
     if (!paginationProductTypeAll || !fullProduct.store_id) return [];
     return paginationProductTypeAll.filter(
@@ -112,58 +173,119 @@ const ProductDetail: React.FC = () => {
     );
   }, [paginationProductTypeAll, fullProduct.store_id, fullProduct.id]);
 
-  console.log('productDetail product:', fullProduct);
-
   return (
-    <Container>
+    <Container style={{ backgroundColor: "#F7F9FC" }}>
       <HeaderCustom
         title={'Chi tiết sản phẩm'}
         rightIcon={
-          <TouchableOpacity onPress={() => goToCart()} style={{ padding: 10 }}>
-            <Feather name='shopping-cart' size={sizes._25sdp} color={colors.black} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity onPress={toggleFavorite} style={[styles.cartIconWrapper, { marginRight: 8 }]} activeOpacity={0.7}>
+              <Ionicons 
+                name={isFavorite ? "heart" : "heart-outline"} 
+                size={24} 
+                color={isFavorite ? "#EF4444" : colors.black} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => goToCart()} style={styles.cartIconWrapper}>
+              <Feather name='shopping-cart' size={22} color={colors.black} />
+              {productCartListData && productCartListData.length > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{productCartListData.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         }
       />
-      <Content style={styles.container}>
-        <AppImage source={{ uri: fullProduct.image }} style={styles.image} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+        {/* Product Image Cover */}
+        <View style={styles.imageWrapper}>
+          <AppImage source={{ uri: fullProduct.image }} style={styles.image} />
+          <View style={styles.categoryTag}>
+            <Text style={styles.categoryText}>{fullProduct.category || "Món ngon"}</Text>
+          </View>
+        </View>
 
-        <View style={styles.content}>
+        {/* Info Card */}
+        <View style={styles.infoCard}>
           <Text style={styles.name}>{fullProduct.name}</Text>
           <Text style={styles.price}>
-            {Number(fullProduct.price).toLocaleString("vi-VN")}đ
+            {Number(fullProduct.price).toLocaleString("vi-VN")} đ
           </Text>
-          <Text style={styles.description}>{fullProduct.description}</Text>
+          {fullProduct.description ? (
+            <Text style={styles.description}>{fullProduct.description}</Text>
+          ) : (
+            <Text style={[styles.description, { fontStyle: "italic", color: "#9CA3AF" }]}>Chưa có mô tả chi tiết.</Text>
+          )}
 
-          <View style={{ ...styles_c.row_direction_align_center, gap: 10, width: '100%', marginBottom: 20 }}>
+          {/* Quick Info Badges */}
+          <View style={styles.badgesRow}>
+            <View style={styles.badgeItem}>
+              <Feather name="clock" size={14} color="#6B7280" />
+              <Text style={styles.badgeText}>15-20 phút</Text>
+            </View>
+            <View style={styles.badgeItem}>
+              <Feather name="thumbs-up" size={14} color="#10B981" />
+              <Text style={[styles.badgeText, { color: "#10B981", fontWeight: "600" }]}>Yêu thích</Text>
+            </View>
+            <View style={styles.badgeItem}>
+              <Feather name="shield" size={14} color="#3B82F6" />
+              <Text style={[styles.badgeText, { color: "#3B82F6" }]}>Đảm bảo</Text>
+            </View>
+          </View>
+
+          {/* Call to Actions */}
+          <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: colors.green_primary }]}
+              style={[styles.btnAction, styles.btnCart]}
               onPress={onPressAddCart}
             >
-              <Text style={styles.buttonText}>Thêm vào giỏ hàng</Text>
+              <Feather name="shopping-bag" size={18} color={colors.blue_primary} style={{ marginRight: 6 }} />
+              <Text style={[styles.btnActionText, { color: colors.blue_primary }]}>Thêm vào giỏ</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.btnAction, styles.btnOrder]}
               onPress={() => goToOrder({ products: [fullProduct], type: 'product_detail' })}
             >
-              <Text style={styles.buttonText}>Đặt hàng ngay</Text>
+              <Feather name="zap" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={[styles.btnActionText, { color: "#fff" }]}>Đặt ngay</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Store Menu Section */}
-        <View style={styles.storeSection}>
-          <View style={styles.divider} />
-          <Text style={styles.storeTitle}>
-            🏫 Cửa hàng: {fullProduct.store_name || "Quán Ăn ngon"}
-          </Text>
+        {/* Store Card Info */}
+        <View style={styles.storeCard}>
+          <View style={styles.storeHeader}>
+            <View style={styles.storeIconBg}>
+              <Feather name="home" size={18} color="#3B82F6" />
+            </View>
+            <View style={styles.storeTextWrapper}>
+              <Text style={styles.storeLabel}>Cửa hàng cung cấp</Text>
+              <Text style={styles.storeName}>{fullProduct.store_name || "Quán Ăn ngon"}</Text>
+            </View>
+          </View>
           {fullProduct.store_address && (
-            <Text style={styles.storeAddress}>📍 {fullProduct.store_address}</Text>
+            <View style={styles.storeAddressRow}>
+              <Feather name="map-pin" size={14} color="#6B7280" style={{ marginRight: 6, marginTop: 2 }} />
+              <Text style={styles.storeAddress}>{fullProduct.store_address}</Text>
+            </View>
           )}
+        </View>
 
-          <Text style={styles.menuHeader}>Thực đơn của quán</Text>
+        {/* Menu Section */}
+        <View style={styles.menuSection}>
+          <View style={styles.menuHeaderRow}>
+            <Text style={styles.menuHeader}>Thực đơn quán</Text>
+            <View style={styles.menuBadge}>
+              <Text style={styles.menuBadgeText}>{storeProducts.length + 1} món</Text>
+            </View>
+          </View>
 
           {storeProducts.length === 0 ? (
-            <Text style={styles.emptyMenuText}>Không có món ăn nào khác.</Text>
+            <View style={styles.emptyMenuCard}>
+              <Feather name="coffee" size={24} color="#9CA3AF" style={{ marginBottom: 6 }} />
+              <Text style={styles.emptyMenuText}>Quán chưa có món ăn khác đăng tải.</Text>
+            </View>
           ) : (
             <View style={styles.menuList}>
               {storeProducts.map((item: any) => (
@@ -173,21 +295,24 @@ const ProductDetail: React.FC = () => {
                   onPress={() => {
                     navigation.replace("ProductDetail", { product: item });
                   }}
+                  activeOpacity={0.7}
                 >
                   <AppImage source={{ uri: item.image }} style={styles.menuItemImage} />
                   <View style={styles.menuItemInfo}>
-                    <Text style={styles.menuItemName}>{item.name}</Text>
+                    <Text style={styles.menuItemName} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.menuItemPrice}>
-                      {Number(item.price).toLocaleString("vi-VN")}đ
+                      {Number(item.price).toLocaleString("vi-VN")} đ
                     </Text>
                   </View>
-                  <Feather name="chevron-right" size={sizes._18sdp} color={colors.gray_primary} />
+                  <View style={styles.chevronBg}>
+                    <Feather name="chevron-right" size={16} color="#6B7280" />
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
           )}
         </View>
-      </Content>
+      </ScrollView>
     </Container>
   );
 };
@@ -195,91 +320,219 @@ const ProductDetail: React.FC = () => {
 export default ProductDetail;
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    flex: 1
+  scrollContainer: {
+    paddingBottom: 40,
+  },
+  cartIconWrapper: {
+    padding: 8,
+    position: "relative",
+  },
+  cartBadge: {
+    position: "absolute",
+    right: 2,
+    top: 2,
+    backgroundColor: "#EF4444",
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cartBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  imageWrapper: {
+    position: "relative",
+    width: "100%",
+    height: 280,
+    backgroundColor: "#E5E7EB",
   },
   image: {
     width: "100%",
-    height: sizes._300sdp
+    height: "100%",
   },
-  content: {
-    padding: 16
+  categoryTag: {
+    position: "absolute",
+    left: 16,
+    bottom: 16,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  categoryText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  infoCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginTop: -20,
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   name: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 8
+    color: "#1F2937",
+    marginBottom: 6,
   },
   price: {
-    fontSize: 18,
-    color: "#e67e22",
-    marginBottom: 12
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#EF4444",
+    marginBottom: 12,
   },
   description: {
-    fontSize: 15,
-    color: "#555",
-    marginBottom: 20
+    fontSize: 14,
+    color: "#4B5563",
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  button: {
-    backgroundColor: "#e67e22",
-    padding: 12,
-    borderRadius: 10,
+  badgesRow: {
+    flexDirection: "row",
+    gap: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#F3F4F6",
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  badgeItem: {
+    flexDirection: "row",
     alignItems: "center",
-    flex: 1
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600"
+  badgeText: {
+    fontSize: 11,
+    color: "#6B7280",
   },
-  storeSection: {
-    padding: 16,
-    paddingTop: 0,
-    paddingBottom: 40,
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginVertical: 16,
+  btnAction: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 25,
   },
-  storeTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.black,
-    marginBottom: 4,
+  btnCart: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: colors.blue_primary,
+  },
+  btnOrder: {
+    backgroundColor: colors.blue_primary,
+  },
+  btnActionText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  storeCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 14,
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
+  },
+  storeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  storeIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  storeTextWrapper: {
+    flex: 1,
+  },
+  storeLabel: {
+    fontSize: 11,
+    color: "#9CA3AF",
+  },
+  storeName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  storeAddressRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   storeAddress: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 16,
+    fontSize: 12,
+    color: "#4B5563",
+    flex: 1,
+  },
+  menuSection: {
+    marginHorizontal: 14,
+    marginTop: 16,
+  },
+  menuHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   menuHeader: {
     fontSize: 16,
     fontWeight: "bold",
-    color: colors.blue_primary,
-    marginBottom: 12,
+    color: "#1F2937",
+  },
+  emptyMenuCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
   },
   emptyMenuText: {
-    fontSize: 14,
-    color: "#999",
-    fontStyle: "italic",
+    fontSize: 12,
+    color: "#9CA3AF",
   },
   menuList: {
-    gap: 12,
+    gap: 8,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#fff",
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 12,
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
     gap: 12,
   },
   menuItemImage: {
-    width: sizes._50sdp,
-    height: sizes._50sdp,
-    borderRadius: 6,
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: "#F3F4F6",
   },
   menuItemInfo: {
     flex: 1,
@@ -287,12 +540,31 @@ const styles = StyleSheet.create({
   menuItemName: {
     fontSize: 14,
     fontWeight: "600",
-    color: colors.black,
+    color: "#1F2937",
     marginBottom: 4,
   },
   menuItemPrice: {
     fontSize: 13,
-    color: "#e67e22",
-    fontWeight: "bold",
+    color: "#EF4444",
+    fontWeight: "700",
+  },
+  chevronBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#F9FAFB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuBadge: {
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  menuBadgeText: {
+    fontSize: 12,
+    color: colors.blue_primary,
+    fontWeight: "600",
   },
 });

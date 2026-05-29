@@ -190,7 +190,7 @@ const Personal: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollContainer}>
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={styles.menuContainer}>
           <TouchableOpacity
             style={styles.menuItem}

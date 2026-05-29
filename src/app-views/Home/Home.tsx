@@ -22,7 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 interface HomeProps {}
 const Home: React.FC<HomeProps> = () => {
   const { themeColors } = useAppTheme();
-  const { goToCart } = useNavigationComponentApp();
+  const { goToCart, goToFavouriteScreen } = useNavigationComponentApp();
 
   const dispatch = useDispatch<AppDispatch>();
   const { hasFetchedCartData } = useSelector(
@@ -69,7 +69,7 @@ const Home: React.FC<HomeProps> = () => {
               marginTop: 12,
             }}
           >
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity onPress={() => goToFavouriteScreen()} style={styles.headerButton}>
               <AntDesign name="heart" size={20} color="#EF4444" />
             </TouchableOpacity>
 

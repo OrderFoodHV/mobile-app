@@ -175,7 +175,7 @@ const StoreProductForm = () => {
     const payload = {
       name,
       price: Number(price),
-      image: image || "https://via.placeholder.com/150", // Nếu không điền link ảnh thì lấy ảnh mặc định
+      image: image || "", // Lưu rỗng nếu không điền ảnh, phía hiển thị sẽ tự dùng ảnh mặc định mới
       description: desc,
       category_id: Number(selectedCategoryId),
       available: 1, // Mặc định mở bán

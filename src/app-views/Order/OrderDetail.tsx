@@ -366,6 +366,22 @@ const OrderDetail: React.FC = () => {
                 : new Date().toLocaleString("vi-VN")}
             </Text>
           </View>
+          {Number(order?.shipping_fee) > 0 && (
+            <View style={styles.rowInfo}>
+              <Text style={styles.label}>Phí giao hàng (Ship):</Text>
+              <Text style={[styles.value, { color: themeColors.text }]}>
+                +{Number(order.shipping_fee).toLocaleString()} đ
+              </Text>
+            </View>
+          )}
+          {Number(order?.service_fee) > 0 && (
+            <View style={styles.rowInfo}>
+              <Text style={styles.label}>Phí dịch vụ:</Text>
+              <Text style={[styles.value, { color: themeColors.text }]}>
+                +{Number(order.service_fee).toLocaleString()} đ
+              </Text>
+            </View>
+          )}
           <View
             style={[
               styles.rowInfo,

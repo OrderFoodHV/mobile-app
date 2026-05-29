@@ -21,261 +21,16 @@ import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
 import { resetProductTypeAll } from "../src/redux/features/productListSlice";
 
-// 🌟 TRỌN BỘ 24 MÓN ĂN CHUẨN KHÍT ĐỒNG BỘ 100% VỚI DATABASE CỦA SẾP
-const ALL_DB_PRODUCTS = [
-  // ===== SNACKS (category_id = 1) =====
-  {
-    id: 1,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Khoai lang kén",
-    image:
-      "https://cdn.tgdd.vn/Files/2020/08/26/1284970/cach-lam-khoai-lang-ken-202008261116040688.jpg",
-    price: 20000,
-    description: "Khoai lang chiên giòn, ngọt nhẹ.",
-    available: 1,
-  },
-  {
-    id: 2,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Bánh tráng nướng",
-    image:
-      "https://cdn.tgdd.vn/2021/09/CookRecipe/Avatar/banh-trang-nuong-thumbnail.jpg",
-    price: 25000,
-    description: "Bánh tráng nướng giòn, topping đầy đủ.",
-    available: 1,
-  },
-  {
-    id: 3,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Chả cá viên chiên",
-    image:
-      "https://cdn.tgdd.vn/Files/2020/09/21/1295317/cach-lam-ca-vien-chien.jpg",
-    price: 22000,
-    description: "Cá viên dai ngon, chiên vàng giòn.",
-    available: 1,
-  },
-  {
-    id: 4,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Đậu phộng rang muối",
-    image:
-      "https://cdn.tgdd.vn/Files/2021/06/23/1363475/cach-rang-dau-phong.jpg",
-    price: 15000,
-    description: "Đậu phộng rang giòn, mặn nhẹ.",
-    available: 1,
-  },
-  {
-    id: 5,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Bắp xào bơ",
-    image:
-      "https://cdn.tgdd.vn/2020/07/CookRecipe/Avatar/bap-xao-thumbnail.jpg",
-    price: 25000,
-    description: "Bắp xào bơ thơm béo, thêm hành phi.",
-    available: 1,
-  },
-  {
-    id: 6,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Khô bò miếng",
-    image: "https://cdn.tgdd.vn/Files/2021/12/02/1402570/kho-bo-mieng.jpg",
-    price: 40000,
-    description: "Khô bò cay nhẹ, dai ngon.",
-    available: 1,
-  },
-  {
-    id: 7,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Bánh flan",
-    image: "https://cdn.tgdd.vn/2021/05/CookProductThumb/banh-flan.jpg",
-    price: 15000,
-    description: "Flan mềm mịn, béo ngậy caramel.",
-    available: 1,
-  },
-  {
-    id: 8,
-    category_id: 1,
-    category_name: "Ăn vặt",
-    name: "Rong biển sấy",
-    image: "https://cdn.tgdd.vn/Files/2021/07/12/1368428/rong-bien-say.jpg",
-    price: 20000,
-    description: "Rong biển giòn tan, vị mặn nhẹ.",
-    available: 1,
-  },
-
-  // ===== FAST FOOD (category_id = 2) =====
-  {
-    id: 9,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Cơm chiên dương châu",
-    image:
-      "https://cdn.tgdd.vn/2021/09/CookRecipe/Avatar/com-chien-duong-chau.jpg",
-    price: 45000,
-    description: "Cơm chiên đầy đủ topping, đậm đà.",
-    available: 1,
-  },
-  {
-    id: 10,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Hủ tiếu Nam Vang",
-    image: "https://cdn.tgdd.vn/2021/08/CookRecipe/Avatar/hu-tieu-nam-vang.jpg",
-    price: 50000,
-    description: "Hủ tiếu nước trong, topping phong phú.",
-    available: 1,
-  },
-  {
-    id: 11,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Bánh mì thịt nướng",
-    image:
-      "https://cdn.tgdd.vn/2021/09/CookRecipe/Avatar/banh-mi-thit-nuong.jpg",
-    price: 30000,
-    description: "Bánh mì giòn, thịt nướng thơm lừng.",
-    available: 1,
-  },
-  {
-    id: 12,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Bún thịt nướng",
-    image: "https://cdn.tgdd.vn/2021/07/CookRecipe/Avatar/bun-thit-nuong.jpg",
-    price: 45000,
-    description: "Bún tươi ăn kèm thịt nướng và rau.",
-    available: 1,
-  },
-  {
-    id: 13,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Cơm bò lúc lắc",
-    image: "https://cdn.tgdd.vn/2021/10/CookRecipe/Avatar/com-bo-luc-lac.jpg",
-    price: 65000,
-    description: "Bò mềm, xào đậm vị, ăn với cơm nóng.",
-    available: 1,
-  },
-  {
-    id: 14,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Mì cay Hàn Quốc",
-    image: "https://cdn.tgdd.vn/2021/07/CookRecipe/Avatar/mi-cay.jpg",
-    price: 55000,
-    description: "Mì cay cấp độ, topping đa dạng.",
-    available: 1,
-  },
-  {
-    id: 15,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Cơm gà nướng",
-    image: "https://cdn.tgdd.vn/2021/09/CookRecipe/Avatar/com-ga-nuong.jpg",
-    price: 55000,
-    description: "Gà nướng thơm, da giòn, cơm nóng.",
-    available: 1,
-  },
-  {
-    id: 16,
-    category_id: 2,
-    category_name: "Đồ ăn nhanh",
-    name: "Bún riêu cua",
-    image: "https://cdn.tgdd.vn/2021/08/CookRecipe/Avatar/bun-rieu.jpg",
-    price: 40000,
-    description: "Bún riêu cua chua nhẹ, đậm đà.",
-    available: 1,
-  },
-
-  // ===== DRINKS (category_id = 3) =====
-  {
-    id: 17,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Trà tắc",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/tra-tac.jpg",
-    price: 15000,
-    description: "Trà tắc chua ngọt, giải khát.",
-    available: 1,
-  },
-  {
-    id: 18,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Sữa chua đá",
-    image: "https://cdn.tgdd.vn/2021/05/CookProductThumb/sua-chua-da.jpg",
-    price: 20000,
-    description: "Sữa chua mát lạnh, tốt cho tiêu hóa.",
-    available: 1,
-  },
-  {
-    id: 19,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Sinh tố dâu",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/sinh-to-dau.jpg",
-    price: 30000,
-    description: "Sinh tố dâu chua ngọt, thơm ngon.",
-    available: 1,
-  },
-  {
-    id: 20,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Nước ép táo",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/nuoc-ep-tao.jpg",
-    price: 30000,
-    description: "Nước ép táo tươi, giàu vitamin.",
-    available: 1,
-  },
-  {
-    id: 21,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Cacao đá",
-    image: "https://cdn.tgdd.vn/2021/05/CookProductThumb/cacao-da.jpg",
-    price: 30000,
-    description: "Cacao đá béo, đậm vị socola.",
-    available: 1,
-  },
-  {
-    id: 22,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Trà vải",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/tra-vai.jpg",
-    price: 30000,
-    description: "Trà vải thơm, ngọt nhẹ.",
-    available: 1,
-  },
-  {
-    id: 23,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Soda chanh",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/soda-chanh.jpg",
-    price: 25000,
-    description: "Soda chanh mát lạnh, sảng khoái.",
-    available: 1,
-  },
-  {
-    id: 24,
-    category_id: 3,
-    category_name: "Đồ uống",
-    name: "Nước ép dứa",
-    image: "https://cdn.tgdd.vn/2020/07/CookProductThumb/nuoc-ep-dua.jpg",
-    price: 30000,
-    description: "Nước ép dứa chua ngọt tự nhiên.",
-    available: 1,
-  },
-];
+const resolveImageUrl = (uri: string): string => {
+  if (!uri || typeof uri !== 'string') return '';
+  if (uri.includes('/uploads/')) {
+    const filename = uri.split('/uploads/').pop();
+    if (filename) {
+      return `${URL_API}/uploads/${filename}`;
+    }
+  }
+  return uri;
+};
 
 const StoreProducts = () => {
   const dispatch = useDispatch<any>();
@@ -284,7 +39,7 @@ const StoreProducts = () => {
     (state: RootState) => state.auth,
     shallowEqual,
   );
-  const [products, setProducts] = useState<any[]>(ALL_DB_PRODUCTS);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
 
@@ -301,14 +56,14 @@ const StoreProducts = () => {
       if (res && Array.isArray(actualProducts)) {
         setProducts(actualProducts);
       } else {
-        setProducts(ALL_DB_PRODUCTS);
+        setProducts([]);
       }
     } catch (error) {
       console.log(
-        "Lỗi lấy thực đơn, kích hoạt chế độ hiển thị dự phòng:",
+        "Lỗi lấy thực đơn:",
         error,
       );
-      setProducts(ALL_DB_PRODUCTS); // Cơ chế bảo vệ phòng khi sập mạng
+      setProducts([]); // Cơ chế bảo vệ phòng khi sập mạng
     } finally {
       setLoading(false);
     }
@@ -369,10 +124,13 @@ const StoreProducts = () => {
       style={[styles.productCard, item.available === 0 && styles.cardDisabled]}
     >
       <Image
-        source={{
-          uri:
-            item.image || item.image_url || "https://via.placeholder.com/100",
-        }}
+        source={
+          item.image &&
+          !item.image.includes("via.placeholder.com") &&
+          !item.image.includes("placeholder")
+            ? { uri: resolveImageUrl(item.image) }
+            : require("../src/assets/images/default_food.png")
+        }
         style={[styles.productImage, item.available === 0 && { opacity: 0.5 }]}
       />
       <View style={styles.productInfo}>

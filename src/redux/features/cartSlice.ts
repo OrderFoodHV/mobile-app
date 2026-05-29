@@ -143,7 +143,7 @@ export const increaseProductQuantityInCart = createAsyncThunk(
         quantity: data.quantity,
       },
       token,
-      showToast: true,
+      showToast: false,
     });
 
     return {

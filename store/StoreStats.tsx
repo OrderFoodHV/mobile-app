@@ -9,6 +9,7 @@ import {
   FlatList,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import colors from "../src/assets/colors/global_colors";
 import useCallAPI from "../src/app-helper/useCallAPI";
@@ -70,7 +71,7 @@ const StoreStats = () => {
   }, [currentSubTab, storeId, token]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* THANH MENU CHUYỂN MODULE KÊNH NGƯỜI BÁN */}
       <View style={styles.topMenu}>
         <TouchableOpacity
@@ -114,7 +115,7 @@ const StoreStats = () => {
           style={{ marginTop: 40 }}
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {/* TAB 1: THIẾT KẾ ĐÚNG 4 Ô THÔNG SỐ CHÍNH ĐỐI SOÁT KINH DOANH TRỰC QUAN */}
           {currentSubTab === "dashboard" && (
             <View>
@@ -240,7 +241,7 @@ const StoreStats = () => {
           )}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

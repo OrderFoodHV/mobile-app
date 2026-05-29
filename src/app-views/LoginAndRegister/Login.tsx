@@ -23,6 +23,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ImageBackground,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -65,172 +66,185 @@ const Login: React.FC<LoginProps> = () => {
   }, [loginResponse]);
 
   return (
-    <KeyboardAvoidingView
+    <ImageBackground
+      source={require("@assets/images/auth_bg.jpg")}
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      resizeMode="cover"
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <Formik
-          enableReinitialize
-          initialValues={initialValues}
-          validationSchema={loginSchema}
-          validateOnMount
-          onSubmit={(values) => {
-            dispatch(resetLoginResponse());
-            dispatch(loginAccount(values));
-            // replaceScreen('BottomContainer')
-          }}
-        >
-          {({
-            handleChange,
-            handleBlur,
-            handleSubmit,
-            values,
-            errors,
-            touched,
-            isValid,
-          }) => {
-            const isDisableButton =
-              !values.email.trim() || !values.password.trim() || !isValid;
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+          <Formik
+            enableReinitialize
+            initialValues={initialValues}
+            validationSchema={loginSchema}
+            validateOnMount
+            onSubmit={(values) => {
+              dispatch(resetLoginResponse());
+              dispatch(loginAccount(values));
+              // replaceScreen('BottomContainer')
+            }}
+          >
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              errors,
+              touched,
+              isValid,
+            }) => {
+              const isDisableButton =
+                !values.email.trim() || !values.password.trim() || !isValid;
 
-            return (
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginHorizontal: 15,
-                  gap: 12,
-                }}
-              >
-                <AppImage
-                  source={require("@assets/images/logoLvalegend.png")}
+              return (
+                <View
                   style={{
-                    width: sizes._80sdp,
-                    height: sizes._82sdp,
-                    borderRadius: 9999,
-                  }}
-                  resizeMode={"cover"}
-                />
-
-                <Text
-                  style={{
-                    fontSize: sizes._15sdp,
-                    color: colors.blue_primary,
+                    marginHorizontal: 20,
+                    marginVertical: 40,
+                    padding: 24,
+                    borderRadius: 20,
+                    backgroundColor: "rgba(255, 255, 255, 0.92)",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 10 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 15,
+                    elevation: 10,
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  Order Food
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: sizes._20sdp,
-                    color: colors.blue_primary,
-                  }}
-                >
-                  Sign in to your account
-                </Text>
-
-                <View style={{ width: "90%", gap: 20 }}>
-                  {/* Email */}
-                  <View style={{ gap: 2 }}>
-                    <Text>Email</Text>
-
-                    <TextInput
-                      style={[
-                        styles.text_input_style,
-                        touched.email && errors.email
-                          ? styles.errorBorder
-                          : null,
-                      ]}
-                      placeholder="Enter Email"
-                      value={values.email}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      onChangeText={handleChange("email")}
-                      onBlur={handleBlur("email")}
-                    />
-
-                    {touched.email && errors.email && (
-                      <Text style={styles.errorText}>{errors.email}</Text>
-                    )}
-                  </View>
-
-                  {/* Password */}
-                  <View style={{ gap: 2 }}>
-                    <Text>Password</Text>
-
-                    <TextInput
-                      style={[
-                        styles.text_input_style,
-                        touched.password && errors.password
-                          ? styles.errorBorder
-                          : null,
-                      ]}
-                      placeholder="Enter Password"
-                      secureTextEntry
-                      value={values.password}
-                      onChangeText={handleChange("password")}
-                      onBlur={handleBlur("password")}
-                    />
-
-                    {touched.password && errors.password && (
-                      <Text style={styles.errorText}>{errors.password}</Text>
-                    )}
-                  </View>
-
-                  {/* Sign In */}
-                  <ButtonBase
-                    title="Sign In"
-                    paddingHorizontal={10}
-                    paddingVertical={10}
-                    backgroundColor={
-                      isDisableButton ? "#BDBDBD" : colors.blue_primary
-                    }
-                    disabled={isDisableButton}
-                    onPress={() => handleSubmit()}
+                  <AppImage
+                    source={require("@assets/images/shopeefake_logo.png")}
+                    style={{
+                      width: sizes._80sdp,
+                      height: sizes._82sdp,
+                      borderRadius: 9999,
+                    }}
+                    resizeMode={"cover"}
                   />
 
-                  {/* Sign Up */}
-                  <View
-                    style={[
-                      styles_c.row_center,
-                      {
-                        gap: 5,
-                      },
-                    ]}
+                  <Text
+                    style={{
+                      fontSize: sizes._15sdp,
+                      color: colors.blue_primary,
+                      fontWeight: "bold",
+                    }}
                   >
-                    <Text
-                      style={{
-                        fontSize: sizes._13sdp,
-                      }}
-                    >
-                      You don't have an account?
-                    </Text>
+                    ShopeeFake
+                  </Text>
 
-                    <TouchableOpacity onPress={goToRegister}>
+                  <Text
+                    style={{
+                      fontSize: sizes._20sdp,
+                      color: colors.blue_primary,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Sign in to your account
+                  </Text>
+
+                  <View style={{ width: "100%", gap: 20 }}>
+                    {/* Email */}
+                    <View style={{ gap: 2 }}>
+                      <Text style={{ fontWeight: "600", color: "#333" }}>Email</Text>
+
+                      <TextInput
+                        style={[
+                          styles.text_input_style,
+                          touched.email && errors.email
+                            ? styles.errorBorder
+                            : null,
+                        ]}
+                        placeholder="Enter Email"
+                        value={values.email}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        onChangeText={handleChange("email")}
+                        onBlur={handleBlur("email")}
+                      />
+
+                      {touched.email && errors.email && (
+                        <Text style={styles.errorText}>{errors.email}</Text>
+                      )}
+                    </View>
+
+                    {/* Password */}
+                    <View style={{ gap: 2 }}>
+                      <Text style={{ fontWeight: "600", color: "#333" }}>Password</Text>
+
+                      <TextInput
+                        style={[
+                          styles.text_input_style,
+                          touched.password && errors.password
+                            ? styles.errorBorder
+                            : null,
+                        ]}
+                        placeholder="Enter Password"
+                        secureTextEntry
+                        value={values.password}
+                        onChangeText={handleChange("password")}
+                        onBlur={handleBlur("password")}
+                      />
+
+                      {touched.password && errors.password && (
+                        <Text style={styles.errorText}>{errors.password}</Text>
+                      )}
+                    </View>
+
+                    {/* Sign In */}
+                    <ButtonBase
+                      title="Sign In"
+                      paddingHorizontal={10}
+                      paddingVertical={10}
+                      backgroundColor={
+                        isDisableButton ? "#BDBDBD" : colors.blue_primary
+                      }
+                      disabled={isDisableButton}
+                      onPress={() => handleSubmit()}
+                    />
+
+                    {/* Sign Up */}
+                    <View
+                      style={[
+                        styles_c.row_center,
+                        {
+                          gap: 5,
+                        },
+                      ]}
+                    >
                       <Text
                         style={{
                           fontSize: sizes._13sdp,
-                          color: colors.blue_primary,
-                          fontWeight: "bold",
+                          color: "#555",
                         }}
                       >
-                        Sign Up
+                        You don't have an account?
                       </Text>
-                    </TouchableOpacity>
+
+                      <TouchableOpacity onPress={goToRegister}>
+                        <Text
+                          style={{
+                            fontSize: sizes._13sdp,
+                            color: colors.blue_primary,
+                            fontWeight: "bold",
+                          }}
+                        >
+                          Sign Up
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
-            );
-          }}
-        </Formik>
-      </ScrollView>
-
-      {/* Loading */}
-      {/* <AppLoading loading={authLoading} /> */}
-    </KeyboardAvoidingView>
+              );
+            }}
+          </Formik>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ImageBackground>
   );
 };
 

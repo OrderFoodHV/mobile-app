@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   TextInput,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
@@ -95,7 +95,7 @@ const StoreSettings: React.FC = () => {
         <Text style={styles.headerTitle}>Cài đặt cửa hàng</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Thông tin cửa hàng</Text>
           <Text style={styles.label}>Tên cửa hàng</Text>

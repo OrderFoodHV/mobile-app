@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Image,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector, useDispatch } from "react-redux";
@@ -86,7 +86,7 @@ const ShipperPersonal: React.FC = () => {
 
       <View style={styles.container}>
         <ScrollView
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
           {/* THÔNG TIN TÀI XẾ & PHƯƠNG TIỆN */}
@@ -222,15 +222,15 @@ const ShipperPersonal: React.FC = () => {
             >
               <View style={styles.menuLeft}>
                 <View
-                  style={[styles.iconCircle, { backgroundColor: "#DBEAFE" }]}
+                  style={[styles.iconCircle, { backgroundColor: "#FFF7ED" }]}
                 >
-                  <Feather name="home" size={20} color="#3B82F6" />
+                  <Feather name="home" size={20} color="#F97316" />
                 </View>
                 <Text style={[styles.menuText, { fontWeight: "bold" }]}>
                   Chuyển sang Cửa hàng
                 </Text>
               </View>
-              <Feather name="chevron-right" size={20} color="#3B82F6" />
+              <Feather name="chevron-right" size={20} color="#F97316" />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -241,7 +241,7 @@ const ShipperPersonal: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#3498db",
+    backgroundColor: "#F97316",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

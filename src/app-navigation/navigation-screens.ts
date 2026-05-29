@@ -48,6 +48,10 @@ const UserScreens = {
     name: "ProductDetail",
     component: require("@app-views/Products/ProductDetail").default,
   },
+  FavouriteScreen: {
+    name: "FavouriteScreen",
+    component: require("@app-views/Products/FavouriteScreen").default,
+  },
   BottomContainer: {
     name: "BottomContainer",
     component: require("@app-navigation/BottomTabs/BottomContainer").default,
