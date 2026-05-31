@@ -10,16 +10,20 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
-import HeaderApp from "@app-components/HeaderApp/HeaderApp";
-import { Container } from "@app-layout/Layout";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "@assets/colors/global_colors";
 import { useSelector } from "react-redux";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import axios from "axios";
+import localAddressData from "../../assets/vietnam_provinces_local.json";
+import MapPickerModal from "../../app-components/MapPickerModal";
 
 interface AdminUnit {
   code: number;
@@ -40,6 +44,8 @@ const AddressScreen: React.FC = () => {
   const [editDistrict, setEditDistrict] = useState<AdminUnit | null>(null);
   const [editWard, setEditWard] = useState<AdminUnit | null>(null);
   const [editStreetDetail, setEditStreetDetail] = useState("");
+  const [editLatitude, setEditLatitude] = useState<number | null>(null);
+  const [editLongitude, setEditLongitude] = useState<number | null>(null);
 
   // States for add mode
   const [isAdding, setIsAdding] = useState(false);
@@ -48,6 +54,12 @@ const AddressScreen: React.FC = () => {
   const [newDistrict, setNewDistrict] = useState<AdminUnit | null>(null);
   const [newWard, setNewWard] = useState<AdminUnit | null>(null);
   const [newStreetDetail, setNewStreetDetail] = useState("");
+  const [newLatitude, setNewLatitude] = useState<number | null>(null);
+  const [newLongitude, setNewLongitude] = useState<number | null>(null);
+
+  // States for map modal
+  const [mapVisible, setMapVisible] = useState(false);
+  const [mapTarget, setMapTarget] = useState<"add" | "edit">("add");
 
   // Dynamic dropdown list data
   const [provinces, setProvinces] = useState<AdminUnit[]>([]);
@@ -89,45 +101,55 @@ const AddressScreen: React.FC = () => {
     }
   };
 
-  // Fetch all provinces on mount
+  // Load provinces from local dataset instantly
   const fetchProvinces = async () => {
     try {
-      const res = await axios.get("https://provinces.open-api.vn/api/p/");
-      if (res.data && Array.isArray(res.data)) {
-        setProvinces(res.data.map((item: any) => ({ code: item.code, name: item.name })));
-      }
+      const parsedProvinces = localAddressData.map((p: any) => ({
+        code: Number(p.Id),
+        name: p.Name
+      }));
+      setProvinces(parsedProvinces);
     } catch (error) {
-      console.log("Error fetching provinces:", error);
+      console.log("Error loading provinces:", error);
     }
   };
 
-  // Fetch districts based on province code
+  // Load districts from local dataset instantly
   const fetchDistricts = async (provinceCode: number) => {
-    setFetchingOptions(true);
     try {
-      const res = await axios.get(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`);
-      if (res.data && res.data.districts) {
-        setDistricts(res.data.districts.map((item: any) => ({ code: item.code, name: item.name })));
+      const foundProvince = localAddressData.find((p: any) => Number(p.Id) === provinceCode);
+      if (foundProvince && foundProvince.Districts) {
+        const parsedDistricts = foundProvince.Districts.map((d: any) => ({
+          code: Number(d.Id),
+          name: d.Name
+        }));
+        setDistricts(parsedDistricts);
       }
     } catch (error) {
-      console.log("Error fetching districts:", error);
-    } finally {
-      setFetchingOptions(false);
+      console.log("Error loading districts:", error);
     }
   };
 
-  // Fetch wards based on district code
+  // Load wards from local dataset instantly
   const fetchWards = async (districtCode: number) => {
-    setFetchingOptions(true);
     try {
-      const res = await axios.get(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
-      if (res.data && res.data.wards) {
-        setWards(res.data.wards.map((item: any) => ({ code: item.code, name: item.name })));
+      let foundDistrict: any = null;
+      for (const p of localAddressData) {
+        const d = p.Districts.find((dist: any) => Number(dist.Id) === districtCode);
+        if (d) {
+          foundDistrict = d;
+          break;
+        }
+      }
+      if (foundDistrict && foundDistrict.Wards) {
+        const parsedWards = foundDistrict.Wards.map((w: any) => ({
+          code: Number(w.Id),
+          name: w.Name
+        }));
+        setWards(parsedWards);
       }
     } catch (error) {
-      console.log("Error fetching wards:", error);
-    } finally {
-      setFetchingOptions(false);
+      console.log("Error loading wards:", error);
     }
   };
 
@@ -145,21 +167,26 @@ const AddressScreen: React.FC = () => {
     const activeProvince = target === "add" ? newProvince : editProvince;
     const activeDistrict = target === "add" ? newDistrict : editDistrict;
 
-    if (type === "district") {
-      if (!activeProvince) {
-        Alert.alert("Thông báo", "Vui lòng chọn Tỉnh/Thành phố trước!");
-        return;
-      }
-      await fetchDistricts(activeProvince.code);
-    } else if (type === "ward") {
-      if (!activeDistrict) {
-        Alert.alert("Thông báo", "Vui lòng chọn Quận/Huyện trước!");
-        return;
-      }
-      await fetchWards(activeDistrict.code);
+    if (type === "district" && !activeProvince) {
+      Alert.alert("Thông báo", "Vui lòng chọn Tỉnh/Thành phố trước!");
+      return;
     }
 
+    if (type === "ward" && !activeDistrict) {
+      Alert.alert("Thông báo", "Vui lòng chọn Quận/Huyện trước!");
+      return;
+    }
+
+    // Show modal immediately to provide instant response and show dynamic loading spinner
     setDropdownModalVisible(true);
+
+    if (type === "province") {
+      await fetchProvinces();
+    } else if (type === "district" && activeProvince) {
+      await fetchDistricts(activeProvince.code);
+    } else if (type === "ward" && activeDistrict) {
+      await fetchWards(activeDistrict.code);
+    }
   };
 
   // Selection item handler
@@ -196,10 +223,110 @@ const AddressScreen: React.FC = () => {
     setDropdownModalVisible(false);
   };
 
+  // Map position selection handler
+  const handleSelectLocation = (data: { latitude: number; longitude: number; address: string; rawAddress?: any }) => {
+    const isAdd = mapTarget === "add";
+    
+    if (isAdd) {
+      setNewLatitude(data.latitude);
+      setNewLongitude(data.longitude);
+    } else {
+      setEditLatitude(data.latitude);
+      setEditLongitude(data.longitude);
+    }
+    
+    // Tự động giải mã và điền Tỉnh/Huyện/Xã và tên đường từ rawAddress
+    if (data.rawAddress) {
+      const raw = data.rawAddress;
+      
+      // 1. Tìm Tỉnh/Thành phố
+      const osmProvinceName = raw.state || raw.city || raw.province || "";
+      let foundProv: any = null;
+      if (osmProvinceName) {
+        foundProv = localAddressData.find((p: any) => 
+          p.Name.toLowerCase().replace(/^(tỉnh|thành phố)\s+/g, "").trim() === osmProvinceName.toLowerCase().replace(/^(tỉnh|thành phố)\s+/g, "").trim()
+        );
+      }
+
+      if (foundProv) {
+        const selectedProv = { code: Number(foundProv.Id), name: foundProv.Name };
+        if (isAdd) {
+          setNewProvince(selectedProv);
+          setNewDistrict(null);
+          setNewWard(null);
+        } else {
+          setEditProvince(selectedProv);
+          setEditDistrict(null);
+          setEditWard(null);
+        }
+
+        // 2. Tìm Quận/Huyện trong Tỉnh đã tìm được
+        const osmDistrictName = raw.district || raw.city_district || raw.county || raw.town || "";
+        let foundDist: any = null;
+        if (osmDistrictName && foundProv.Districts) {
+          foundDist = foundProv.Districts.find((d: any) => 
+            d.Name.toLowerCase().replace(/^(quận|huyện|thị xã|thành phố)\s+/g, "").trim() === osmDistrictName.toLowerCase().replace(/^(quận|huyện|thị xã|thành phố)\s+/g, "").trim()
+          );
+        }
+
+        if (foundDist) {
+          const selectedDist = { code: Number(foundDist.Id), name: foundDist.Name };
+          if (isAdd) {
+            setNewDistrict(selectedDist);
+            setNewWard(null);
+          } else {
+            setEditDistrict(selectedDist);
+            setEditWard(null);
+          }
+
+          // 3. Tìm Phường/Xã trong Quận đã tìm được
+          const osmWardName = raw.suburb || raw.subdistrict || raw.village || raw.ward || "";
+          let foundW: any = null;
+          if (osmWardName && foundDist.Wards) {
+            foundW = foundDist.Wards.find((w: any) => 
+              w.Name.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim() === osmWardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim()
+            );
+          }
+
+          if (foundW) {
+            const selectedWard = { code: Number(foundW.Id), name: foundW.Name };
+            if (isAdd) {
+              setNewWard(selectedWard);
+            } else {
+              setEditWard(selectedWard);
+            }
+          }
+        }
+      }
+
+      // Gợi ý tên đường/số nhà
+      const road = raw.road || raw.suburb || "";
+      const houseNumber = raw.house_number || "";
+      const suggestedStreet = houseNumber ? `${houseNumber} ${road}`.trim() : road.trim();
+      if (suggestedStreet) {
+        if (isAdd) setNewStreetDetail(suggestedStreet);
+        else setEditStreetDetail(suggestedStreet);
+      } else if (data.address) {
+        const parts = data.address.split(",");
+        if (parts.length > 0) {
+          if (isAdd) setNewStreetDetail(parts[0].trim());
+          else setEditStreetDetail(parts[0].trim());
+        }
+      }
+    }
+
+    Alert.alert(
+      "Ghim bản đồ thành công 🎉",
+      `Tọa độ đã chọn:\n${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}\n\nHệ thống đã tự động điền các thông tin địa chỉ tương thích.`
+    );
+  };
+
   // Helper to parse existing flat string address to structure if possible (fallback to detail)
   const startEditing = (item: any) => {
     setEditingId(item.id);
     setEditTitle(item.title || "Địa chỉ");
+    setEditLatitude(item.latitude || null);
+    setEditLongitude(item.longitude || null);
     
     // Parse address: "Số nhà..., Phường..., Quận..., Tỉnh..."
     const parts = (item.detail || "").split(",").map((p: string) => p.trim());
@@ -236,7 +363,9 @@ const AddressScreen: React.FC = () => {
       token: token,
       data: { 
         title: editTitle,
-        address: fullAddress 
+        address: fullAddress,
+        latitude: editLatitude,
+        longitude: editLongitude
       },
       showToast: true,
       successTitle: "Cập nhật địa chỉ thành công!",
@@ -262,7 +391,9 @@ const AddressScreen: React.FC = () => {
       token: token,
       data: { 
         title: newTitle,
-        address: fullAddress 
+        address: fullAddress,
+        latitude: newLatitude,
+        longitude: newLongitude
       },
       showToast: true,
       successTitle: "Thêm địa chỉ thành công!",
@@ -274,6 +405,8 @@ const AddressScreen: React.FC = () => {
       setNewDistrict(null);
       setNewWard(null);
       setNewStreetDetail("");
+      setNewLatitude(null);
+      setNewLongitude(null);
     }
   };
 
@@ -290,14 +423,21 @@ const AddressScreen: React.FC = () => {
   };
 
   return (
-    <Container style={{ backgroundColor: "#F3F4F6" }}>
-      <HeaderApp
-        title="Địa chỉ giao hàng"
-        leftIcon="arrow-left"
-        onLeftPress={() => navigation.goBack()}
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Địa chỉ giao hàng</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
         {/* DUYỆT DANH SÁCH ĐỊA CHỈ */}
         {addressList.map((item) => (
           <View key={item.id} style={styles.card}>
@@ -332,6 +472,32 @@ const AddressScreen: React.FC = () => {
                   value={editTitle}
                   onChangeText={setEditTitle}
                 />
+
+                {/* EDIT MAP PINNING */}
+                <Text style={styles.label}>Ghim vị trí trên Bản đồ (GPS)</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownSelector,
+                    (editLatitude && editLongitude) ? { borderColor: "#10B981", borderWidth: 1.5 } : null
+                  ]}
+                  onPress={() => {
+                    setMapTarget("edit");
+                    setMapVisible(true);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownSelectorText,
+                      !(editLatitude && editLongitude) && styles.placeholderText,
+                      (editLatitude && editLongitude) && { color: "#10B981", fontWeight: "600" }
+                    ]}
+                  >
+                    {(editLatitude && editLongitude) 
+                      ? `Đã ghim: ${editLatitude.toFixed(5)}, ${editLongitude.toFixed(5)}` 
+                      : "Bấm để chọn vị trí trên bản đồ..."}
+                  </Text>
+                  <Feather name="map" size={18} color={(editLatitude && editLongitude) ? "#10B981" : "#9CA3AF"} />
+                </TouchableOpacity>
 
                 <Text style={styles.label}>Tỉnh / Thành phố:</Text>
                 <TouchableOpacity
@@ -415,6 +581,32 @@ const AddressScreen: React.FC = () => {
               onChangeText={setNewTitle}
             />
 
+            {/* ADD MAP PINNING */}
+            <Text style={styles.label}>Ghim vị trí trên Bản đồ (GPS)</Text>
+            <TouchableOpacity
+              style={[
+                styles.dropdownSelector,
+                (newLatitude && newLongitude) ? { borderColor: "#10B981", borderWidth: 1.5 } : null
+              ]}
+              onPress={() => {
+                setMapTarget("add");
+                setMapVisible(true);
+              }}
+            >
+              <Text
+                style={[
+                  styles.dropdownSelectorText,
+                  !(newLatitude && newLongitude) && styles.placeholderText,
+                  (newLatitude && newLongitude) && { color: "#10B981", fontWeight: "600" }
+                ]}
+              >
+                {(newLatitude && newLongitude) 
+                  ? `Đã ghim: ${newLatitude.toFixed(5)}, ${newLongitude.toFixed(5)}` 
+                  : "Bấm để chọn vị trí trên bản đồ..."}
+              </Text>
+              <Feather name="map" size={18} color={(newLatitude && newLongitude) ? "#10B981" : "#9CA3AF"} />
+            </TouchableOpacity>
+
             <Text style={styles.label}>Tỉnh / Thành phố:</Text>
             <TouchableOpacity
               style={styles.dropdownSelector}
@@ -487,7 +679,17 @@ const AddressScreen: React.FC = () => {
             <Text style={styles.addBtnText}>Thêm địa chỉ mới</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* 🌟 LEAFLET MAP MODAL */}
+      <MapPickerModal
+        visible={mapVisible}
+        onClose={() => setMapVisible(false)}
+        onSelectLocation={handleSelectLocation}
+        initialLatitude={mapTarget === "add" ? newLatitude : editLatitude}
+        initialLongitude={mapTarget === "add" ? newLongitude : editLongitude}
+      />
 
       {/* 🌟 CUSTOM MODAL DROPDOWN SELECTOR */}
       <Modal
@@ -551,17 +753,35 @@ const AddressScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.blue_primary || "#0284C7",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  backButton: {
+    padding: 4,
+  },
   card: {
     backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     elevation: 2,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
   },
   headerCard: {
     flexDirection: "row",
@@ -573,32 +793,33 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   title: { fontSize: 16, fontWeight: "bold", color: "#1F2937", marginLeft: 8 },
-  label: { fontSize: 14, color: "#6B7280", marginBottom: 6, fontWeight: "500" },
+  label: { fontSize: 14, color: "#4B5563", marginBottom: 6, fontWeight: "600" },
   addressText: { fontSize: 15, color: "#4B5563", lineHeight: 22 },
   inputContainer: { marginTop: 10 },
   input: {
     backgroundColor: "#F9FAFB",
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 15,
     color: "#1F2937",
-    minHeight: 40,
-    marginBottom: 10,
+    minHeight: 48,
+    marginBottom: 12,
   },
   dropdownSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#F9FAFB",
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 12,
+    height: 52,
   },
   dropdownSelectorText: {
     fontSize: 15,
@@ -615,8 +836,8 @@ const styles = StyleSheet.create({
   saveBtn: {
     flex: 1,
     backgroundColor: colors.blue_primary,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: "center",
   },
   saveBtnText: { color: "#fff", fontSize: 14, fontWeight: "bold" },

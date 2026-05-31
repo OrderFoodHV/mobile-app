@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
-import { Container } from "../src/app-layout/Layout";
 import colors from "../src/assets/colors/global_colors";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSelector, shallowEqual } from "react-redux";
@@ -266,16 +267,13 @@ const StoreOrders = () => {
   );
 
   return (
-    <Container style={{ backgroundColor: "#F9FAFB" }}>
-      <View
-        style={{ position: "relative", backgroundColor: colors.blue_primary }}
-      >
-        <HeaderApp title="Kênh Người Bán" />
-        <View style={styles.headerActionGroup}>
-          <TouchableOpacity onPress={fetchOrders} style={{ padding: 8 }}>
-            <Ionicons name="refresh" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Đơn hàng</Text>
+        <TouchableOpacity onPress={fetchOrders} style={{ padding: 4 }}>
+          <Feather name="refresh-cw" size={22} color="#ffffff" />
+        </TouchableOpacity>
       </View>
       <View style={styles.tabContainer}>
         {TABS.map((tab) => (
@@ -313,22 +311,28 @@ const StoreOrders = () => {
           ListEmptyComponent={() => (
             <View style={styles.emptyView}>
               <Feather name="inbox" size={50} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Chưa có đơn hàng nào sếp ơi!</Text>
+              <Text style={styles.emptyText}>Chưa có đơn hàng nào bạn ơi!</Text>
             </View>
           )}
         />
       )}
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  headerActionGroup: {
-    position: "absolute",
-    right: 10,
-    bottom: 5,
+  header: {
+    backgroundColor: "#F97316",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 26,
+    fontWeight: "bold",
   },
   tabContainer: { flexDirection: "row", backgroundColor: "#fff", elevation: 2 },
   tabBtn: {

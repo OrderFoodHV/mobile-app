@@ -48,24 +48,36 @@ const Register: React.FC<RegisterProps> = () => {
 
   useEffect(() => {
     if (registerResponse?.success === true) {
-      Alert.alert(
-        "Đăng ký thành công",
-        "Chào mừng bạn đến với Food App! Đang tự động đăng nhập...",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              if (regCredentialsRef.current) {
-                dispatch(resetRegisterResponse());
-                dispatch(loginAccount(regCredentialsRef.current));
-              }
+      if (Platform.OS === "web") {
+        alert("Đăng ký thành công! Đang tự động đăng nhập...");
+        if (regCredentialsRef.current) {
+          dispatch(resetRegisterResponse());
+          dispatch(loginAccount(regCredentialsRef.current));
+        }
+      } else {
+        Alert.alert(
+          "Đăng ký thành công",
+          "Chào mừng bạn đến với Food App! Đang tự động đăng nhập...",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                if (regCredentialsRef.current) {
+                  dispatch(resetRegisterResponse());
+                  dispatch(loginAccount(regCredentialsRef.current));
+                }
+              },
             },
-          },
-        ],
-        { cancelable: false }
-      );
+          ],
+          { cancelable: false }
+        );
+      }
     } else if (registerResponse?.success === false) {
-      Alert.alert("Đăng ký thất bại", registerResponse.message || "Vui lòng thử lại.");
+      if (Platform.OS === "web") {
+        alert("Đăng ký thất bại: " + (registerResponse.message || "Vui lòng thử lại."));
+      } else {
+        Alert.alert("Đăng ký thất bại", registerResponse.message || "Vui lòng thử lại.");
+      }
       dispatch(resetRegisterResponse());
     }
   }, [registerResponse]);
@@ -75,7 +87,11 @@ const Register: React.FC<RegisterProps> = () => {
       dispatch(resetLoginResponse());
       replaceScreen("BottomContainer");
     } else if (loginResponse?.success === false) {
-      Alert.alert("Đăng nhập thất bại", loginResponse.message || "Không thể tự động đăng nhập.");
+      if (Platform.OS === "web") {
+        alert("Đăng nhập thất bại: " + (loginResponse.message || "Không thể tự động đăng nhập."));
+      } else {
+        Alert.alert("Đăng nhập thất bại", loginResponse.message || "Không thể tự động đăng nhập.");
+      }
       dispatch(resetLoginResponse());
     }
   }, [loginResponse]);
@@ -114,7 +130,7 @@ const Register: React.FC<RegisterProps> = () => {
               );
             }}
           >
-            {/* 👇 ĐÂY NÀY! CÁI DÒNG SẾP LỠ TAY XÓA MẤT LÀ DÒNG NÀY NÀY 👇 */}
+            {/* 👇 ĐÂY NÀY! CÁI DÒNG BẠN LỠ TAY XÓA MẤT LÀ DÒNG NÀY NÀY 👇 */}
             {({
               handleChange,
               handleBlur,

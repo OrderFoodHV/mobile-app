@@ -20,6 +20,7 @@ import socket from "src/app-helper/socketHelper";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { updateAuthInfor, resetAllAuth } from "src/redux/features/authSlice";
+import * as Location from "expo-location";
 
 const ShipperHome = () => {
   const navigation = useNavigation<any>();
@@ -108,6 +109,68 @@ const ShipperHome = () => {
     }
   }, [navigation]);
 
+  // Vòng lặp lấy tọa độ GPS thời gian thực gửi cho Backend khi online
+  useEffect(() => {
+    let locationInterval: any = null;
+
+    const startLocationUpdates = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Quyền định vị bị từ chối 📍", "Vui lòng cho phép quyền định vị để nhận được các đơn hàng gần nhất.");
+          return;
+        }
+
+        // 1. Cập nhật vị trí ngay lập tức khi vừa online
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (loc && socket.connected && user?.user?.id) {
+          console.log(`📍 [GPS Shipper] Initial position: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+          socket.emit("update_shipper_location", {
+            userId: user.user.id,
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+        }
+
+        // 2. Gửi định kỳ mỗi 10 giây
+        locationInterval = setInterval(async () => {
+          try {
+            const currentLoc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            if (currentLoc && socket.connected && user?.user?.id) {
+              console.log(`📍 [GPS Shipper] Location update: ${currentLoc.coords.latitude}, ${currentLoc.coords.longitude}`);
+              socket.emit("update_shipper_location", {
+                userId: user.user.id,
+                latitude: currentLoc.coords.latitude,
+                longitude: currentLoc.coords.longitude,
+              });
+            }
+          } catch (e) {
+            console.log("Lỗi định vị vòng lặp shipper:", e);
+          }
+        }, 10000);
+      } catch (err) {
+        console.log("Lỗi khởi tạo định vị GPS Shipper:", err);
+      }
+    };
+
+    if (isOnline) {
+      // Đợi socket kết nối ổn định rồi bắt đầu
+      setTimeout(() => {
+        startLocationUpdates();
+      }, 1000);
+    } else {
+      if (locationInterval) clearInterval(locationInterval);
+    }
+
+    return () => {
+      if (locationInterval) clearInterval(locationInterval);
+    };
+  }, [isOnline, user?.user?.id]);
+
   useEffect(() => {
     const updateDbStatus = async () => {
       const statusStr = isOnline ? "idle" : "offline";
@@ -154,8 +217,21 @@ const ShipperHome = () => {
     updateDbStatus();
 
     if (isOnline) {
-      if (!socket.connected) socket.connect();
-      socket.emit("register_shipper");
+      const onConnect = () => {
+        console.log("🔌 [Socket] Shipper connected and registering rooms...");
+        socket.emit("register_shipper");
+        if (user?.user?.id) {
+          socket.emit("register_user", user.user.id);
+        }
+      };
+
+      if (socket.connected) {
+        onConnect();
+      } else {
+        socket.connect();
+      }
+
+      socket.on("connect", onConnect);
 
       socket.on("broadcast_new_order", (orderData: any) => {
         console.log("🎯 RADAR HỨNG ĐƯỢC ĐƠN MỚI:", orderData);
@@ -168,6 +244,7 @@ const ShipperHome = () => {
         });
       });
     } else {
+      socket.off("connect");
       socket.off("broadcast_new_order");
       if (socket.connected) socket.disconnect();
       setOrderQueue([]);
@@ -175,13 +252,14 @@ const ShipperHome = () => {
     }
 
     return () => {
+      socket.off("connect");
       socket.off("broadcast_new_order");
     };
   }, [isOnline]); // Chỉ phụ thuộc vào isOnline, không tái đăng ký khi state đơn thay đổi
 
   const handleCallCustomer = (phone: string) => {
     if (!phone || phone === "Chưa cập nhật") {
-      Alert.alert("Thông báo", "Khách hàng này chưa cập nhật số điện thoại sếp ơi!");
+      Alert.alert("Thông báo", "Khách hàng này chưa cập nhật số điện thoại bạn ơi!");
       return;
     }
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -190,14 +268,35 @@ const ShipperHome = () => {
   };
 
   // Nhận một đơn cụ thể từ danh sách hàng đợi
-  const handleAcceptOrder = (order: any) => {
-    socket.emit("driver_accepts", {
-      orderId: order.orderId,
-      driverData: { name: displayName },
-    });
-    // Chuyển sang trạng thái giao hàng và xóa khỏi hàng đợi
-    setCurrentOrder(order);
-    setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
+  const handleAcceptOrder = async (order: any) => {
+    const token = user?.tokenData;
+    if (!token) {
+      Alert.alert("Lỗi", "Vui lòng đăng nhập lại!");
+      return;
+    }
+
+    try {
+      const res = await useCallAPI({
+        method: "PATCH",
+        url: `${URL_API}/shippers/accept/${order.orderId}`,
+        token: token,
+      });
+
+      if (res && res.success !== false) {
+        socket.emit("driver_accepts", {
+          orderId: order.orderId,
+          driverData: { name: displayName },
+        });
+        // Chuyển sang trạng thái giao hàng và xóa khỏi hàng đợi
+        setCurrentOrder(order);
+        setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
+      } else {
+        Alert.alert("Thất bại", res?.message || "Không thể nhận đơn này!");
+      }
+    } catch (err) {
+      console.log("Lỗi nhận đơn:", err);
+      Alert.alert("Lỗi", "Có lỗi xảy ra khi nhận đơn.");
+    }
   };
 
   // Bỏ qua (xóa) một đơn cụ thể khỏi hàng đợi
@@ -205,15 +304,36 @@ const ShipperHome = () => {
     setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
   };
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     if (!currentOrder) return;
-    socket.emit("driver_completed", { orderId: currentOrder.orderId });
+    const token = user?.tokenData;
+    if (!token) {
+      Alert.alert("Lỗi", "Vui lòng đăng nhập lại!");
+      return;
+    }
 
-    Alert.alert(
-      "Thành công 🎉",
-      `Sếp đã hoàn thành đơn #${currentOrder.orderId}! +${Number(currentOrder.shipping_fee).toLocaleString()}đ đã được cộng vào ví thu nhập.`,
-    );
-    setCurrentOrder(null);
+    try {
+      const res = await useCallAPI({
+        method: "PATCH",
+        url: `${URL_API}/shippers/complete/${currentOrder.orderId}`,
+        token: token,
+      });
+
+      if (res && res.success !== false) {
+        socket.emit("driver_completed", { orderId: currentOrder.orderId });
+
+        Alert.alert(
+          "Thành công 🎉",
+          `bạn đã hoàn thành đơn #${currentOrder.orderId}! +${Number(currentOrder.shipping_fee).toLocaleString()}đ đã được cộng vào ví thu nhập.`,
+        );
+        setCurrentOrder(null);
+      } else {
+        Alert.alert("Thất bại", res?.message || "Không thể hoàn thành đơn!");
+      }
+    } catch (err) {
+      console.log("Lỗi hoàn thành đơn:", err);
+      Alert.alert("Lỗi", "Có lỗi xảy ra khi hoàn thành đơn.");
+    }
   };
 
   // Render từng card đơn hàng trong hàng đợi
@@ -315,7 +435,7 @@ const ShipperHome = () => {
           {!isOnline ? (
             <View style={styles.radarOffline}>
               <Feather name="moon" size={48} color="#9CA3AF" />
-              <Text style={styles.offlineTitle}>Sếp đang nghỉ ngơi</Text>
+              <Text style={styles.offlineTitle}>bạn đang nghỉ ngơi</Text>
             </View>
           ) : currentOrder ? (
             /* SUB-SCREEN 1: ĐANG GIAO HÀNG */
@@ -403,7 +523,7 @@ const ShipperHome = () => {
                 style={{ marginBottom: 8 }}
               />
               <Text style={styles.pulseText}>
-                Hệ thống đang quét radar tìm đơn quanh khu vực của sếp nhen...
+                Hệ thống đang quét radar tìm đơn quanh khu vực của bạn nhen...
               </Text>
             </View>
           )}

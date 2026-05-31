@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
-import { Container, Content, Footer } from "@app-layout/Layout";
+import { Content, Footer } from "@app-layout/Layout";
+import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import { useRoute } from "@react-navigation/native";
@@ -83,8 +84,15 @@ const OrderInfo: React.FC = () => {
     }
   }, [createOrderResponse]);
 
+  // Tính dự phòng tổng tiền nếu bị khuyết cho hiển thị
+  const fallbackTotal = data?.items?.reduce(
+    (sum: number, item: any) =>
+      sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  );
+
   return (
-    <Container>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "left", "right"]}>
       <HeaderCustom
         title={"Thông tin đơn hàng"}
         rightIcon={<View style={{ flex: 1 }}></View>}
@@ -99,49 +107,56 @@ const OrderInfo: React.FC = () => {
 
           {/* Thông tin sản phẩm */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Thông tin sản phẩm</Text>
-            {data?.items?.map((product: any) => (
-              <View key={product.id} style={styles.productContainer}>
+            <Text style={styles.sectionTitle}>Sản phẩm đã chọn</Text>
+            {data?.items?.map((item: any, index: number) => (
+              <View key={index} style={styles.productContainer}>
                 <Image
-                  source={{ uri: product?.image }}
+                  source={{ uri: item.image }}
                   style={styles.productImage}
                 />
                 <View style={styles.productDetails}>
-                  <Text style={styles.productName}>{product?.name}</Text>
+                  <Text style={styles.productName}>{item.name}</Text>
                   <Text style={styles.productPrice}>
-                    {product?.price?.toLocaleString()}
+                    Đơn giá: {Number(item.price).toLocaleString()} đ
                   </Text>
-                  <Text style={styles.productQuantity}>
-                    Số lượng: {product?.quantity}
+                  <Text style={styles.productQty}>
+                    Số lượng: {item.quantity}
                   </Text>
                 </View>
               </View>
             ))}
           </View>
 
-          {/* Phương thức thanh toán */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-            <Text style={styles.text}>{data?.payment_method?.label}</Text>
-          </View>
-
-          {/* Tổng tiền */}
+          {/* Tóm tắt chi phí */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tổng tiền</Text>
-            <Text style={styles.totalText}>
-              {data?.total_price?.toLocaleString()}đ
-            </Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryText}>Tạm tính</Text>
+              <Text style={styles.summaryValue}>
+                {Number(data?.total_price || fallbackTotal).toLocaleString()} đ
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryText}>Phí vận chuyển</Text>
+              <Text style={styles.summaryValue}>0 đ</Text>
+            </View>
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalText}>Tổng cộng</Text>
+              <Text style={styles.totalValue}>
+                {Number(data?.total_price || fallbackTotal).toLocaleString()} đ
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </Content>
       <Footer>
-        <View style={styles.footer}>
+        <View style={styles.footerContainer}>
           <TouchableOpacity style={styles.orderButton} onPress={handleSend}>
             <Text style={styles.orderButtonText}>Xác nhận</Text>
           </TouchableOpacity>
         </View>
       </Footer>
-    </Container>
+    </SafeAreaView>
   );
 };
 
@@ -196,12 +211,41 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#e53935",
   },
-  footer: {
-    marginBottom: 30,
-    backgroundColor: "#fff",
-    padding: 16,
+  productQty: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: "#333",
+  },
+  totalRow: {
     borderTopWidth: 1,
     borderColor: "#eee",
+    marginTop: 8,
+    paddingTop: 10,
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#e53935",
+  },
+  footerContainer: {
+    padding: 16,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#eee",
+    width: "100%",
   },
   orderButton: {
     backgroundColor: colors.blue_primary,

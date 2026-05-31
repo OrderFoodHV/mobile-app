@@ -9,17 +9,57 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
 import socket from "../../app-helper/socketHelper";
+import useCallAPI from "../../app-helper/useCallAPI";
+import URL_API from "../../app-helper/urlAPI";
 
 const UserOrderTracking = ({ route, navigation }: any) => {
   // Lấy ID đơn hàng vừa đặt từ route.params truyền sang
   const { orderId } = route.params;
+  const token = useSelector((state: any) => state.auth.tokenData);
 
   // Bản đồ trạng thái (State Machine)
   const [orderStatus, setOrderStatus] = useState("pending");
   const [driverInfo, setDriverInfo] = useState<any>(null);
 
+  // Fetch initial status from backend on mount
   useEffect(() => {
+    const fetchInitialStatus = async () => {
+      if (!token) return;
+      try {
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/tracking/${orderId}`,
+          token: token,
+          showToast: false,
+        });
+        const orderInfo = res?.data?.order_info || res?.order_info;
+        if (orderInfo) {
+          const dbStatus = orderInfo.status;
+          if (dbStatus === "Quán đã nhận đơn") {
+            setOrderStatus("preparing");
+          } else if (dbStatus === "Đang giao hàng" || dbStatus === "delivering") {
+            setOrderStatus("delivering");
+          } else if (dbStatus === "Đơn đã bị hủy" || dbStatus === "cancelled") {
+            setOrderStatus("cancelled");
+          } else {
+            setOrderStatus(dbStatus);
+          }
+        }
+      } catch (err) {
+        console.log("Lỗi fetchInitialStatus:", err);
+      }
+    };
+    fetchInitialStatus();
+  }, [orderId, token]);
+
+  useEffect(() => {
+    // Ensure socket is connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     // 1. Join vào phòng (room) riêng của đơn hàng này để hóng tin
     socket.emit("join_order_room", { orderId });
 
@@ -137,7 +177,7 @@ const UserOrderTracking = ({ route, navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Sếp có thể nhét Google Maps vào đây nếu muốn */}
+      {/* bạn có thể nhét Google Maps vào đây nếu muốn */}
       <View style={styles.mapPlaceholder}>
         <Feather name="map" size={50} color="#D1D5DB" />
         <Text style={{ color: "#9CA3AF" }}>Bản đồ hành trình</Text>

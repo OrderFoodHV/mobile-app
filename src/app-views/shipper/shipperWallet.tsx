@@ -12,12 +12,16 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import useCallAPI from "@app-helper/useCallAPI"; // Đảm bảo sếp có import này
+import { useSelector } from "react-redux";
+import useCallAPI from "@app-helper/useCallAPI"; // Đảm bảo bạn có import này
 import URL_API from "@app-helper/urlAPI";
+
+import { useFocusEffect } from "@react-navigation/native";
 
 const ShipperWallet = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const tokenData = useSelector((state: any) => state.auth.tokenData);
 
   // Các state lưu dữ liệu thật từ Backend
   const [balance, setBalance] = useState(0);
@@ -27,28 +31,33 @@ const ShipperWallet = () => {
 
   // Hàm "Ăn chắc": Kéo dữ liệu từ Backend
   const fetchWalletData = async () => {
-    // Gọi API lấy thống kê ví tài xế (Sếp nhớ đảm bảo BE có route này)
+    if (!tokenData) return;
+    // Gọi API lấy thống kê ví tài xế (bạn nhớ đảm bảo BE có route này)
     const res = await useCallAPI({
       method: "GET",
-      url: `${URL_API}/shippers/wallet`, // Route ví dụ, sếp chỉnh lại cho khớp BE nhé
+      url: `${URL_API}/shippers/wallet`, // Route ví dụ, bạn chỉnh lại cho khớp BE nhé
+      token: tokenData,
       showToast: false,
     });
 
-    if (res?.success && res?.data) {
-      setBalance(res.data.balance || 0);
-      setTodayEarn(res.data.todayEarn || 0);
-      setTodayOrders(res.data.todayOrders || 0);
-      setTransactions(res.data.history || []);
+    if (res) {
+      const actualData = res.data !== undefined ? res.data : res;
+      setBalance(actualData.balance || 0);
+      setTodayEarn(actualData.todayEarn || 0);
+      setTodayOrders(actualData.todayOrders || 0);
+      setTransactions(actualData.history || []);
     }
     setLoading(false);
   };
 
-  // Chạy ngay khi vừa mở màn hình
-  useEffect(() => {
-    fetchWalletData();
-  }, []);
+  // Tự động reload mỗi khi tab ví được active (vào tầm mắt)
+  useFocusEffect(
+    useCallback(() => {
+      fetchWalletData();
+    }, [tokenData])
+  );
 
-  // Chạy khi sếp lấy tay vuốt màn hình xuống để tải lại
+  // Chạy khi bạn lấy tay vuốt màn hình xuống để tải lại
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchWalletData();
@@ -75,7 +84,7 @@ const ShipperWallet = () => {
           <Text style={styles.transTitle} numberOfLines={1}>
             {item.title || item.description}
           </Text>
-          {/* Tuỳ format ngày giờ từ BE trả về, sếp có thể dùng moment.js hoặc format chuẩn */}
+          {/* Tuỳ format ngày giờ từ BE trả về, bạn có thể dùng moment.js hoặc format chuẩn */}
           <Text style={styles.transTime}>
             {item.time || new Date(item.created_at).toLocaleDateString("vi-VN")}
           </Text>

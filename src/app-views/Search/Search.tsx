@@ -1,7 +1,6 @@
 import React from "react";
 import HeaderApp from "@app-components/HeaderApp/HeaderApp";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
-import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
@@ -12,7 +11,9 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AppImage from "@app-uikits/AppImage";
 import { Feather } from "@expo/vector-icons";
 import useCallAPI from "@app-helper/useCallAPI";
@@ -154,7 +155,8 @@ const Search = () => {
   );
 
   return (
-    <Container style={{ flex: 1, backgroundColor: themeColors.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <View
         style={{
           backgroundColor: colors.blue_primary,
@@ -252,7 +254,7 @@ const Search = () => {
           ) : null
         }
       />
-    </Container>
+    </SafeAreaView>
   );
 };
 

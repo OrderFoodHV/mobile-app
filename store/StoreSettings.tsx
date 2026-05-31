@@ -8,6 +8,8 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -21,12 +23,12 @@ import { updateAuthInfor } from "src/redux/features/authSlice";
 const StoreSettings: React.FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
-  // Sếp hay dùng chữ name hoặc user_name, tớ hứng cả 2 cho chắc cốp
+  // bạn hay dùng chữ name hoặc user_name, tớ hứng cả 2 cho chắc cốp
   const user = useSelector((state: any) => state.auth.account);
   const tokenData = useSelector((state: any) => state.auth.tokenData);
 
   const [name, setName] = useState(user?.storeName || user?.name || user?.user_name || "");
-  const [phone, setPhone] = useState(user?.phone || "");
+  const [phone, setPhone] = useState(user?.storePhone || user?.phone || "");
   const [address, setAddress] = useState(user?.storeAddress || user?.address || "");
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +52,7 @@ const StoreSettings: React.FC = () => {
           updateAuthInfor({
             name: user?.name, // Giữ nguyên tên user
             storeName: name, // Push tên quán lên Redux
-            phone: phone,
+            storePhone: phone, // Push SĐT quán lên Redux
             storeAddress: address, // Cập nhật địa chỉ quán
           }),
         );
@@ -95,54 +97,60 @@ const StoreSettings: React.FC = () => {
         <Text style={styles.headerTitle}>Cài đặt cửa hàng</Text>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Thông tin cửa hàng</Text>
-          <Text style={styles.label}>Tên cửa hàng</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView contentContainerStyle={[styles.container, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
+          <View style={styles.formCard}>
+            <Text style={styles.sectionTitle}>Thông tin cửa hàng</Text>
+            <Text style={styles.label}>Tên cửa hàng</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} />
 
-          <Text style={styles.label}>Số điện thoại</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+            <Text style={styles.label}>Số điện thoại</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
 
-          <Text style={styles.label}>Địa chỉ</Text>
-          <TextInput
-            style={[styles.input, { height: 80 }]}
-            value={address}
-            onChangeText={setAddress}
-            multiline
-          />
+            <Text style={styles.label}>Địa chỉ</Text>
+            <TextInput
+              style={[styles.input, { height: 80 }]}
+              value={address}
+              onChangeText={setAddress}
+              multiline
+            />
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleUpdateProfile}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveText}>Lưu thay đổi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={handleUpdateProfile}
-            disabled={loading}
+            style={styles.deleteBtn}
+            onPress={handleDeleteAccount}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveText}>Lưu thay đổi</Text>
-            )}
+            <Feather
+              name="trash-2"
+              size={20}
+              color="#EF4444"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.deleteText}>Xóa tài khoản cửa hàng</Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.deleteBtn}
-          onPress={handleDeleteAccount}
-        >
-          <Feather
-            name="trash-2"
-            size={20}
-            color="#EF4444"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.deleteText}>Xóa tài khoản cửa hàng</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

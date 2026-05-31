@@ -9,6 +9,8 @@ import {
   Alert,
   Image,
   Platform,
+  ActivityIndicator,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -16,7 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useSelector, shallowEqual, useDispatch } from "react-redux";
 
 import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
-import { Container } from "../src/app-layout/Layout";
+import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "../src/assets/colors/global_colors";
 import { RootState } from "../src/redux/store";
 import useCallAPI from "../src/app-helper/useCallAPI";
@@ -55,6 +57,7 @@ const StoreProductForm = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -71,7 +74,7 @@ const StoreProductForm = () => {
           categoryList = res;
         }
         setCategories(categoryList);
-        // Nếu đang sửa món, gán text tìm kiếm ban đầu theo tên danh mục
+        // Nếu đang sửa món, gán tên danh mục tương ứng
         if (editProduct && editProduct.category_id) {
           const found = categoryList.find(
             (cat: any) => cat.id === Number(editProduct.category_id)
@@ -87,7 +90,6 @@ const StoreProductForm = () => {
     };
     loadCategories();
   }, [editProduct, tokenData]);
-
 
   const handleSelectImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -113,7 +115,7 @@ const StoreProductForm = () => {
   };
 
   const uploadImage = async (uri: string) => {
-    setLoading(true);
+    setUploading(true);
     try {
       const uriParts = uri.split(".");
       const fileType = uriParts[uriParts.length - 1] || "jpeg";
@@ -125,7 +127,6 @@ const StoreProductForm = () => {
         type: `image/${fileType === "jpg" ? "jpeg" : fileType}`,
       } as any);
 
-      // Gọi cổng /upload ở gốc domain của API
       const res = await useCallAPI({
         method: "POST",
         url: `${URL_API.replace(/\/api$/, "")}/upload`,
@@ -144,16 +145,17 @@ const StoreProductForm = () => {
       console.log("Lỗi tải ảnh:", error);
       Alert.alert("Lỗi", "Đã xảy ra lỗi khi tải ảnh lên.");
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!name || !price) {
-      Alert.alert(
-        "Thiếu thông tin",
-        "Sếp ơi điền ít nhất Tên món và Giá tiền nhé!",
-      );
+    if (!name.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập tên món ăn bạn nhé!");
+      return;
+    }
+    if (!price.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập giá bán món ăn!");
       return;
     }
 
@@ -166,49 +168,46 @@ const StoreProductForm = () => {
     } else {
       Alert.alert(
         "Danh mục không hợp lệ",
-        "Vui lòng chọn một danh mục từ danh sách gợi ý!"
+        "Vui lòng chọn hoặc tìm một danh mục hợp lệ từ danh sách!"
       );
       return;
     }
 
     setLoading(true);
     const payload = {
-      name,
+      name: name.trim(),
       price: Number(price),
-      image: image || "", // Lưu rỗng nếu không điền ảnh, phía hiển thị sẽ tự dùng ảnh mặc định mới
-      description: desc,
+      image: image || "",
+      description: desc.trim(),
       category_id: Number(selectedCategoryId),
-      available: 1, // Mặc định mở bán
+      available: 1,
     };
 
     try {
       if (editProduct) {
-        // CẬP NHẬT MÓN CŨ
         await useCallAPI({
           method: "PUT",
           url: `${URL_API}/store/${storeId}/products/${editProduct.id}`,
           token: tokenData,
           data: payload,
         });
-        Alert.alert("Thành công", "Đã cập nhật món ăn!");
+        Alert.alert("Thành công", "Đã cập nhật thông tin món ăn thành công!");
       } else {
-        // THÊM MÓN MỚI
         await useCallAPI({
           method: "POST",
           url: `${URL_API}/store/${storeId}/products`,
           token: tokenData,
           data: payload,
         });
-        Alert.alert("Thành công", "Đã thêm món ăn mới vào Menu!");
+        Alert.alert("Thành công", "Đã thêm món ăn mới vào Thực đơn!");
       }
-      // Reset danh sách món để trang chủ tự động tải lại thực đơn mới nhất
       dispatch(resetProductTypeAll());
-      navigation.goBack(); // Quay lại trang Thực đơn
+      navigation.goBack();
     } catch (error) {
       console.log("Lỗi lưu sản phẩm:", error);
       Alert.alert(
         "Lỗi",
-        "Không thể lưu sản phẩm. Sếp xem lại token (Đăng nhập lại) xem sao nhé.",
+        "Không thể lưu sản phẩm. Vui lòng đăng nhập lại hoặc thử lại sau.",
       );
     } finally {
       setLoading(false);
@@ -216,50 +215,130 @@ const StoreProductForm = () => {
   };
 
   return (
-    <Container style={{ backgroundColor: "#F9FAFB" }}>
-      <HeaderApp
-        title={editProduct ? "Sửa món ăn" : "Thêm món mới"}
-        leftIcon="arrow-left"
-        onLeftPress={() => navigation.goBack()}
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }} edges={["top", "left", "right"]}>
+      {/* Custom Premium Header Bar */}
+      <View style={styles.customHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBackBtn}
+          activeOpacity={0.7}
+        >
+          <Feather name="arrow-left" size={22} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.customHeaderTitle}>
+          {editProduct ? "Chỉnh sửa món ăn" : "Thêm món mới vào menu"}
+        </Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <View style={styles.card}>
-          <Text style={styles.label}>
-            Tên món ăn <Text style={{ color: "red" }}>*</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Banner/Header trang trí */}
+        <View style={styles.formHeaderBanner}>
+          <Text style={styles.bannerTitle}>
+            {editProduct ? "Cập Nhật Món Ăn" : "Tạo Món Ăn Mới"}
           </Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="VD: Cơm chiên dương châu..."
-          />
+          <Text style={styles.bannerSubtitle}>
+            Điền đầy đủ thông tin để món ngon thu hút thực khách đặt hàng nhiều hơn
+          </Text>
+        </View>
 
-          <Text style={styles.label}>
-            Giá bán (VNĐ) <Text style={{ color: "red" }}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={price}
-            onChangeText={setPrice}
-            keyboardType="numeric"
-            placeholder="VD: 45000"
-          />
+        <View style={styles.formContainer}>
+          {/* Tên món */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Tên món ăn <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.inputWrapper}>
+              <Feather name="shopping-bag" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="VD: Cơm Chiên Dương Châu..."
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
 
-          <Text style={styles.label}>
-            Danh mục món ăn <Text style={{ color: "red" }}>*</Text>
-          </Text>
-          <View style={{ zIndex: 999, position: "relative", marginBottom: 16 }}>
-            <TextInput
-              style={[styles.input, { marginBottom: 0 }]}
-              value={categorySearchText}
-              onChangeText={(text) => {
-                setCategorySearchText(text);
-                setShowSuggestions(true);
-              }}
-              placeholder="Nhập tên danh mục (VD: cơm, phở...)"
-              onFocus={() => setShowSuggestions(true)}
-            />
+          {/* Giá món */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Giá bán lẻ (VNĐ) <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.inputWrapper}>
+              <Feather name="dollar-sign" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="numeric"
+                placeholder="VD: 45000"
+                placeholderTextColor="#9CA3AF"
+              />
+              <Text style={styles.inputUnit}>đ</Text>
+            </View>
+          </View>
+
+          {/* Danh mục */}
+          <View style={[styles.inputGroup, { zIndex: 10 }]}>
+            <Text style={styles.label}>
+              Danh mục món <Text style={styles.required}>*</Text>
+            </Text>
+            
+            {/* Quick badges gợi ý chọn nhanh */}
+            <View style={styles.quickBadgesWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickBadgesList}>
+                {categories.slice(0, 6).map((cat) => {
+                  const isSelected = categorySearchText.trim().toLowerCase() === cat.name.toLowerCase();
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[styles.badge, isSelected && styles.badgeActive]}
+                      onPress={() => {
+                        setCategoryId(cat.id.toString());
+                        setCategorySearchText(cat.name);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      <Text style={[styles.badgeText, isSelected && styles.badgeTextActive]}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Feather name="tag" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={categorySearchText}
+                onChangeText={(text) => {
+                  setCategorySearchText(text);
+                  setShowSuggestions(true);
+                }}
+                placeholder="Tìm hoặc chọn danh mục ở trên..."
+                placeholderTextColor="#9CA3AF"
+                onFocus={() => setShowSuggestions(true)}
+              />
+              {categorySearchText ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setCategorySearchText("");
+                    setCategoryId("");
+                  }}
+                  style={styles.clearInputBtn}
+                >
+                  <Feather name="x" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
             {showSuggestions && categorySearchText.trim() !== "" && (
               <View style={styles.suggestionsContainer}>
                 {categories.filter((cat) =>
@@ -286,7 +365,7 @@ const StoreProductForm = () => {
                 ) : (
                   <View style={styles.noSuggestionItem}>
                     <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                      Không tìm thấy danh mục tương tự
+                      Không tìm thấy danh mục tương ứng
                     </Text>
                   </View>
                 )}
@@ -294,192 +373,328 @@ const StoreProductForm = () => {
             )}
           </View>
 
-          <Text style={styles.label}>Hình ảnh món ăn</Text>
-          <View style={styles.imagePickerWrapper}>
-            {image ? (
-              <View style={styles.previewWrapper}>
-                <Image source={{ uri: image }} style={styles.previewImg} />
+          {/* Hình ảnh */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Hình ảnh sản phẩm</Text>
+            <View style={styles.imagePickerWrapper}>
+              {image ? (
+                <View style={styles.previewWrapper}>
+                  <Image source={{ uri: image }} style={styles.previewImg} />
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => setImage("")}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="trash-2" size={16} color="#fff" />
+                    <Text style={styles.removeText}>Xóa ảnh</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.removeImageBtn}
-                  onPress={() => setImage("")}
+                  style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
+                  onPress={handleSelectImage}
+                  disabled={uploading}
+                  activeOpacity={0.7}
                 >
-                  <Feather name="x" size={16} color="#fff" />
+                  {uploading ? (
+                    <ActivityIndicator size="small" color="#F97316" />
+                  ) : (
+                    <>
+                      <View style={styles.uploadIconCircle}>
+                        <Feather name="camera" size={24} color="#F97316" />
+                      </View>
+                      <Text style={styles.uploadBtnText}>Tải ảnh món ăn lên</Text>
+                      <Text style={styles.uploadBtnSubtext}>Hỗ trợ định dạng JPG, PNG dưới 5MB</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.uploadBtn}
-                onPress={handleSelectImage}
-              >
-                <Feather name="camera" size={24} color="#6B7280" style={{ marginBottom: 4 }} />
-                <Text style={styles.uploadBtnText}>Tải ảnh lên từ thiết bị</Text>
-              </TouchableOpacity>
-            )}
+              )}
+            </View>
           </View>
 
-          <Text style={styles.label}>Mô tả món ăn</Text>
-          <TextInput
-            style={[styles.input, { minHeight: 80, textAlignVertical: "top" }]}
-            value={desc}
-            onChangeText={setDesc}
-            multiline
-            placeholder="Mô tả sự hấp dẫn của món ăn..."
-          />
+          {/* Mô tả */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Mô tả chi tiết món ăn</Text>
+            <View style={[styles.inputWrapper, { alignItems: "flex-start", paddingVertical: 12 }]}>
+              <Feather name="align-left" size={20} color="#9CA3AF" style={[styles.inputIcon, { marginTop: 2 }]} />
+              <TextInput
+                style={[styles.input, { minHeight: 100, textAlignVertical: "top", paddingTop: 0 }]}
+                value={desc}
+                onChangeText={setDesc}
+                multiline
+                placeholder="Mô tả món ăn của bạn"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, loading && { opacity: 0.7 }]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          <Feather
-            name="save"
-            size={20}
-            color="#fff"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.saveBtnText}>
-            {loading ? "Đang xử lý..." : "Lưu Sản Phẩm"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Container>
+        {/* Nút lưu */}
+        <View style={{ paddingHorizontal: 16, marginTop: 10 }}>
+          <TouchableOpacity
+            style={[styles.saveBtn, loading && { opacity: 0.8 }]}
+            onPress={handleSave}
+            disabled={loading}
+            activeOpacity={0.9}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+            ) : (
+              <Feather name="check" size={20} color="#fff" style={{ marginRight: 8 }} />
+            )}
+            <Text style={styles.saveBtnText}>
+              {loading ? "Đang lưu thông tin..." : editProduct ? "Cập Nhật Thay Đổi" : "Thêm Món Vào Menu"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    elevation: 2,
+  customHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  headerBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    fontFamily: Platform.OS === "ios" ? "Helvetica Neue" : "sans-serif-medium",
+  },
+  formHeaderBanner: {
+    backgroundColor: "#FFF7ED",
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFEDD5",
     marginBottom: 20,
   },
-  label: { fontSize: 14, color: "#4B5563", marginBottom: 8, fontWeight: "600" },
-  input: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: 10,
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#EA580C",
+    marginBottom: 4,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 18,
+  },
+  formContainer: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1F2937",
-    marginBottom: 16,
-  },
-  previewImg: {
-    width: "100%",
-    height: 150,
-    borderRadius: 10,
-    marginBottom: 16,
-    backgroundColor: "#E5E7EB",
-    resizeMode: "cover",
-  },
-  saveBtn: {
-    flexDirection: "row",
-    backgroundColor: colors.blue_primary,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: "#F3F4F6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
     elevation: 2,
   },
-  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  categoryContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-    gap: 8,
+  inputGroup: {
+    marginBottom: 20,
+    position: "relative",
   },
-  categoryPill: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  required: {
+    color: "#EF4444",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    paddingVertical: 10,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 52,
   },
-  categoryPillActive: {
-    backgroundColor: colors.blue_primary,
-    borderColor: colors.blue_primary,
+  inputIcon: {
+    marginRight: 10,
   },
-  categoryPillText: {
-    fontSize: 13,
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: "#1F2937",
+    paddingVertical: 8,
+    height: "100%",
+  },
+  inputUnit: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#4B5563",
+    color: "#9CA3AF",
+    paddingLeft: 8,
   },
-  categoryPillTextActive: {
-    color: "#fff",
+  clearInputBtn: {
+    padding: 4,
   },
-  imagePickerWrapper: {
-    marginBottom: 16,
+  quickBadgesWrapper: {
+    marginBottom: 10,
   },
-  previewWrapper: {
-    position: "relative",
-    width: "100%",
+  quickBadgesList: {
+    gap: 8,
+    paddingVertical: 2,
   },
-  removeImageBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadBtn: {
+  badge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: "#F3F4F6",
     borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#9CA3AF",
-    borderRadius: 10,
-    height: 120,
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: "#E5E7EB",
   },
-  uploadBtnText: {
-    fontSize: 14,
+  badgeActive: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#F97316",
+  },
+  badgeText: {
+    fontSize: 13,
     color: "#4B5563",
     fontWeight: "500",
   },
+  badgeTextActive: {
+    color: "#F97316",
+    fontWeight: "700",
+  },
   suggestionsContainer: {
     position: "absolute",
-    top: 50,
+    top: 86,
     left: 0,
     right: 0,
     backgroundColor: "#fff",
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    elevation: 4,
+    elevation: 5,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 8,
     maxHeight: 200,
-    zIndex: 1000,
+    zIndex: 9999,
   },
   suggestionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
   suggestionText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#1F2937",
   },
   noSuggestionItem: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     alignItems: "center",
+  },
+  imagePickerWrapper: {
+    marginTop: 4,
+  },
+  previewWrapper: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  previewImg: {
+    width: "100%",
+    height: 200,
+    resizeMode: "cover",
+  },
+  removeImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EF4444",
+    paddingVertical: 12,
+  },
+  removeText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
+    marginLeft: 6,
+  },
+  uploadBtn: {
+    height: 150,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "#F97316",
+    backgroundColor: "#FFF7ED",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  uploadBtnDisabled: {
+    opacity: 0.7,
+  },
+  uploadIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFEDD5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  uploadBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#EA580C",
+    marginBottom: 4,
+  },
+  uploadBtnSubtext: {
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  saveBtn: {
+    flexDirection: "row",
+    backgroundColor: "#F97316",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#F97316",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  saveBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
 
 export default StoreProductForm;
+

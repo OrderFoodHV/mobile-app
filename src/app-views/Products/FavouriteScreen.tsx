@@ -11,7 +11,7 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
-import { Container } from "@app-layout/Layout";
+import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import AppImage from "@app-uikits/AppImage";
@@ -97,7 +97,7 @@ const FavouriteScreen: React.FC = () => {
   );
 
   return (
-    <Container style={{ backgroundColor: "#F7F9FC" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F7F9FC" }} edges={["top", "left", "right"]}>
       <HeaderCustom title="Món ăn yêu thích" />
 
       {loading ? (
@@ -126,7 +126,7 @@ const FavouriteScreen: React.FC = () => {
           }
         />
       )}
-    </Container>
+    </SafeAreaView>
   );
 };
 

@@ -1,4 +1,3 @@
-// src/app-views/Personal/Personal.tsx
 import React from "react";
 import {
   View,
@@ -7,13 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useSelector, shallowEqual, useDispatch } from "react-redux";
 import { resetAllAuth, updateAuthInfor } from "src/redux/features/authSlice";
 import { RootState } from "../../redux/store";
-import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import { useNavigationServices } from "@app-helper/navigateToScreens";
 import useCallAPI from "@app-helper/useCallAPI";
@@ -63,6 +63,10 @@ const Personal: React.FC = () => {
                 is_seller: profile.is_seller,
                 shipperStatus: profile.shipperStatus,
                 storeStatus: profile.storeStatus,
+                storeId: profile.storeId,
+                storeName: profile.storeName,
+                storeAddress: profile.storeAddress,
+                storePhone: profile.storePhone,
                 phone: profile.phone,
                 user_name: profile.name || profile.user_name,
                 vehicle: vehicleModel,
@@ -145,21 +149,55 @@ const Personal: React.FC = () => {
     }
   };
 
-  const handleGoToSeller = () => {
+  const handleGoToSeller = async () => {
     if (!account) {
       Alert.alert("Thông báo", "Bạn chưa đăng nhập!");
       return;
     }
 
-    if (Number(account?.is_seller) === 1) {
+    const token = authState?.tokenData;
+    if (!token) return;
+
+    // Lấy thông tin mới nhất từ máy chủ ngay khi bấm vào nút
+    const res = await useCallAPI({
+      method: "GET",
+      url: `${URL_API}/users/me`,
+      token: token,
+      showToast: false,
+    });
+
+    let currentIsSeller = Number(account?.is_seller) === 1;
+    let currentStoreStatus = account?.storeStatus;
+
+    if (res && res.success !== false) {
+      const profile = res;
+      dispatch(
+        updateAuthInfor({
+          is_shipper: profile.is_shipper,
+          is_seller: profile.is_seller,
+          shipperStatus: profile.shipperStatus,
+          storeStatus: profile.storeStatus,
+          storeId: profile.storeId,
+          storeName: profile.storeName,
+          storeAddress: profile.storeAddress,
+          storePhone: profile.storePhone,
+          phone: profile.phone,
+          user_name: profile.name || profile.user_name,
+        })
+      );
+      currentIsSeller = Number(profile.is_seller) === 1;
+      currentStoreStatus = profile.storeStatus;
+    }
+
+    if (currentIsSeller) {
       navigation.navigate("StoreBottomContainer");
-    } else if (account?.storeStatus === "pending") {
+    } else if (currentStoreStatus === "pending") {
       Alert.alert(
         "Thông báo",
         "Yêu cầu mở cửa hàng của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
       );
     } else {
-      // Sếp đổi từ Alert sang chuyển hướng đến màn Đăng ký mở quán
+      // bạn đổi từ Alert sang chuyển hướng đến màn Đăng ký mở quán
       Alert.alert(
         "Thông báo",
         "Bạn chưa là Người bán. Bạn có muốn đăng ký mở cửa hàng?",
@@ -174,7 +212,8 @@ const Personal: React.FC = () => {
     }
   };
   return (
-    <Container style={{ backgroundColor: "#F3F4F6" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       {/* 🌟 HEADER MÀU XANH HIỂN THỊ THÔNG TIN CHÍNH CHỦ */}
       <View style={styles.headerBlue}>
         <View style={styles.avatarContainer}>
@@ -313,14 +352,14 @@ const Personal: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   headerBlue: {
     backgroundColor: colors.blue_primary || "#3498db",
-    height: 120,
+    height: 90,
     borderBottomLeftRadius: 15,
     borderBottomRightRadius: 15,
     position: "relative",

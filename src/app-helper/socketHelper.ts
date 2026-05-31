@@ -2,7 +2,7 @@
 import { io, Socket } from "socket.io-client";
 import URL_API from "./urlAPI";
 
-// Cắt đuôi /api nếu URL_API của sếp có, vì Socket cần kết nối vào gốc domain
+// Cắt đuôi /api nếu URL_API của bạn có, vì Socket cần kết nối vào gốc domain
 const SOCKET_URL = URL_API.replace(/\/api$/, "");
 
 const socket: Socket = io(SOCKET_URL, {

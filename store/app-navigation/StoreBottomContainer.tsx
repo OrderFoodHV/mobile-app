@@ -53,7 +53,7 @@ export default function StoreBottomContainer() {
       // 2. Alert cảnh báo cho chủ quán và đẩy ra ngoài
       Alert.alert(
         "Cảnh báo hệ thống ❌",
-        data.message || "Cửa hàng của sếp đã bị Admin gỡ khỏi hệ thống. Hệ thống sẽ đưa sếp về trang chính.",
+        data.message || "Cửa hàng của bạn đã bị Admin gỡ khỏi hệ thống. Hệ thống sẽ đưa bạn về trang chính.",
         [
           {
             text: "XÁC NHẬN",
@@ -96,7 +96,7 @@ export default function StoreBottomContainer() {
             if (pendingCountRef.current !== null && newCount > pendingCountRef.current) {
               Alert.alert(
                 "🔔 TING TING! ĐƠN HÀNG MỚI",
-                "Quán sếp vừa nhận được một đơn đặt món mới từ khách hàng! Vào duyệt ngay cho nóng sếp ơi.",
+                "Quán bạn vừa nhận được một đơn đặt món mới từ khách hàng! Vào duyệt ngay cho nóng bạn ơi.",
                 [{ text: "XÁC NHẬN ĐÃ BIẾT" }],
               );
             }

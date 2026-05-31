@@ -7,6 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import colors from "@assets/colors/global_colors";
@@ -27,14 +29,14 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
   const handleSubmitReview = () => {
     if (comment.trim() === "") {
-      Alert.alert("Thông báo", "Sếp vui lòng gõ vài lời nhận xét món ăn nhé!");
+      Alert.alert("Thông báo", "bạn vui lòng gõ vài lời nhận xét món ăn nhé!");
       return;
     }
 
     // Đoạn này để bắn API POST lưu bình luận xuống bảng reviews dưới MySQL
     Alert.alert(
       "Thành công",
-      `Cảm ơn sếp đã đánh giá ${rating} sao cho đơn hàng #${orderId}! Bình luận đã được gửi tới quán nhen.`,
+      `Cảm ơn bạn đã đánh giá ${rating} sao cho đơn hàng #${orderId}! Bình luận đã được gửi tới quán nhen.`,
       [
         {
           text: "OK",
@@ -49,56 +51,61 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
   return (
     <Modal visible={isVisible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.title}>🍳 Đánh giá món ăn</Text>
-          <Text style={styles.subTitle}>
-            Đơn hàng #{orderId} đã giao thành công, sếp ăn có ngon miệng không
-            nè?
-          </Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.title}>🍳 Đánh giá món ăn</Text>
+            <Text style={styles.subTitle}>
+              Đơn hàng #{orderId} đã giao thành công, bạn ăn có ngon miệng không
+              nè?
+            </Text>
 
-          {/* HÀNG NGÔI SAO BẤM CHỌN ĐỘNG */}
-          <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                <AntDesign
-                  name={star <= rating ? "star" : "staro"}
-                  size={32}
-                  color={star <= rating ? "#FBBF24" : "#D1D5DB"}
-                />
+            {/* HÀNG NGÔI SAO BẤM CHỌN ĐỘNG */}
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                  <AntDesign
+                    name={star <= rating ? "star" : "staro"}
+                    size={32}
+                    color={star <= rating ? "#FBBF24" : "#D1D5DB"}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Ô NHẬP BÌNH LUẬN CRITIC */}
+            <TextInput
+              style={styles.input}
+              placeholder="Món ăn giòn ngon, giao hàng siêu tốc bạn ơi..."
+              placeholderTextColor="#999"
+              value={comment}
+              onChangeText={setComment}
+              multiline
+            />
+
+            {/* KHỐI NÚT HÀNH ĐỘNG */}
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={[styles.btn, styles.cancelBtn]}
+                onPress={onClose}
+              >
+                <Text style={styles.btnText}>Để sau</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Ô NHẬP BÌNH LUẬN CRITIC */}
-          <TextInput
-            style={styles.input}
-            placeholder="Món ăn giòn ngon, giao hàng siêu tốc sếp ơi..."
-            placeholderTextColor="#999"
-            value={comment}
-            onChangeText={setComment}
-            multiline
-          />
-
-          {/* KHỐI NÚT HÀNH ĐỘNG */}
-          <View style={styles.btnRow}>
-            <TouchableOpacity
-              style={[styles.btn, styles.cancelBtn]}
-              onPress={onClose}
-            >
-              <Text style={styles.btnText}>Để sau</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.btn, styles.submitBtn]}
-              onPress={handleSubmitReview}
-            >
-              <Text style={[styles.btnText, { color: "#fff" }]}>
-                Gửi đánh giá
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, styles.submitBtn]}
+                onPress={handleSubmitReview}
+              >
+                <Text style={[styles.btnText, { color: "#fff" }]}>
+                  Gửi đánh giá
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -17,7 +17,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   // 2. Định nghĩa bảng màu hệ thống
   const themeColors = {
     bg: isDarkMode ? "#121212" : "#f5f6fa", // Nền app gạt công tắc sẽ tối đi
-    card: "#FFFFFF", // KHUNG CHỮ LUÔN GIỮ NỀN TRẮNG THEO ĐÚNG Ý SẾP!
+    card: "#FFFFFF", // KHUNG CHỮ LUÔN GIỮ NỀN TRẮNG THEO ĐÚNG Ý BẠN!
     text: "#333333", // Chữ luôn giữ màu tối trên nền thẻ trắng để dễ nhìn
     border: isDarkMode ? "#2C2C2C" : "#eeeeee",
   };

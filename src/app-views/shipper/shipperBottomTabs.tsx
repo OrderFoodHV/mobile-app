@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 // 🌟 Import các màn hình chuẩn
 import shipperHome from "src/app-views/shipper/shipperHome";
 import shipperWallet from "src/app-views/shipper/shipperWallet";
-// Sửa lại đường dẫn import này cho khớp với thư mục của sếp nếu cần nhé
+// Sửa lại đường dẫn import này cho khớp với thư mục của bạn nếu cần nhé
 import shipperPersonal from "src/app-views/shipper/shipperPersonal";
 
 const Tab = createBottomTabNavigator();

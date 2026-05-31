@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from "rea
 import { RouteProp, useRoute, useNavigation } from "@react-navigation/native";
 import styles_c from "@assets/styles/styles_c";
 import colors from "@assets/colors/global_colors";
-import { Container } from "@app-layout/Layout";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AppImage from '@app-uikits/AppImage';
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import sizes from "@assets/styles/sizes";
@@ -174,7 +174,7 @@ const ProductDetail: React.FC = () => {
   }, [paginationProductTypeAll, fullProduct.store_id, fullProduct.id]);
 
   return (
-    <Container style={{ backgroundColor: "#F7F9FC" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F7F9FC" }} edges={["top", "left", "right"]}>
       <HeaderCustom
         title={'Chi tiết sản phẩm'}
         rightIcon={
@@ -183,11 +183,11 @@ const ProductDetail: React.FC = () => {
               <Ionicons 
                 name={isFavorite ? "heart" : "heart-outline"} 
                 size={24} 
-                color={isFavorite ? "#EF4444" : colors.black} 
+                color={isFavorite ? "#EF4444" : "#FFF"} 
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => goToCart()} style={styles.cartIconWrapper}>
-              <Feather name='shopping-cart' size={22} color={colors.black} />
+              <Feather name='shopping-cart' size={22} color="#FFF" />
               {productCartListData && productCartListData.length > 0 && (
                 <View style={styles.cartBadge}>
                   <Text style={styles.cartBadgeText}>{productCartListData.length}</Text>
@@ -313,7 +313,7 @@ const ProductDetail: React.FC = () => {
           )}
         </View>
       </ScrollView>
-    </Container>
+    </SafeAreaView>
   );
 };
 

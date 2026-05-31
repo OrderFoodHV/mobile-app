@@ -6,9 +6,10 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import HeaderApp from "@app-components/HeaderApp/HeaderApp";
-import { Container, Content } from "@app-layout/Layout";
 import { Feather } from "@expo/vector-icons";
 import colors from "@assets/colors/global_colors";
 import { useSelector, shallowEqual } from "react-redux";
@@ -72,9 +73,10 @@ const Notification: React.FC = () => {
   };
 
   return (
-    <Container style={{ backgroundColor: "#f5f6fa" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f6fa" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <View style={styles.headerRow}>
-        <HeaderApp title="Thông báo của sếp" />
+        <HeaderApp title="Thông báo của bạn" />
       </View>
 
       {loading && notifications.length === 0 ? (
@@ -93,7 +95,7 @@ const Notification: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            // 🌟 ĐÃ XÓA KHÓA SCROLL để sếp tự do vuốt xem toàn bộ danh sách thông báo lịch sử
+            // 🌟 ĐÃ XÓA KHÓA SCROLL để bạn tự do vuốt xem toàn bộ danh sách thông báo lịch sử
             renderItem={({ item }) => (
               <View
                 style={[
@@ -144,14 +146,14 @@ const Notification: React.FC = () => {
             ListEmptyComponent={() => (
               <View style={{ alignItems: "center", marginTop: 50 }}>
                 <Text style={{ color: "#999" }}>
-                  Hộp thư trống trải sếp ơi!
+                  Hộp thư trống trải bạn ơi!
                 </Text>
               </View>
             )}
           />
         </View>
       )}
-    </Container>
+    </SafeAreaView>
   );
 };
 

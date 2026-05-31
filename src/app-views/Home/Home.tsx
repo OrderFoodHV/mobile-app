@@ -1,5 +1,4 @@
 import HeaderApp from "@app-components/HeaderApp/HeaderApp";
-import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import styles_c from "@assets/styles/styles_c";
@@ -13,8 +12,7 @@ import { AppDispatch, RootState } from "@redux/store";
 import { getCartData } from "@redux/features/cartSlice";
 import React from "react";
 import { useAppTheme } from "src/app-context/ThemeContext";
-// 1. Xóa chữ SafeAreaView ở 'react-native' đi
-import { View, Text } from "react-native";
+import { View, Text, StatusBar } from "react-native";
 
 // 2. Import SafeAreaView mới từ thư viện vừa cài ở ngay phía dưới
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,7 +39,8 @@ const Home: React.FC<HomeProps> = () => {
   }, [tokenData, hasFetchedCartData]);
 
   return (
-    <Container style={{ flex: 1, backgroundColor: themeColors.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       {/* HEADER */}
       <View
         style={{
@@ -91,7 +90,7 @@ const Home: React.FC<HomeProps> = () => {
       <View style={{ flex: 1, marginTop: 10 }}>
         <ListProductTabBar />
       </View>
-    </Container>
+    </SafeAreaView>
   );
 };
 

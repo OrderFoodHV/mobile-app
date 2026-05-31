@@ -9,10 +9,11 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import HeaderApp from "../src/app-components/HeaderApp/HeaderApp";
-import { Container } from "../src/app-layout/Layout";
 import colors from "../src/assets/colors/global_colors";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSelector, shallowEqual, useDispatch } from "react-redux";
@@ -95,7 +96,7 @@ const StoreProducts = () => {
   };
 
   const handleDelete = (productId: number) => {
-    Alert.alert("Xác nhận xóa", "Sếp có chắc muốn xóa vĩnh viễn món này?", [
+    Alert.alert("Xác nhận xóa", "bạn có chắc muốn xóa vĩnh viễn món này?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Xóa",
@@ -173,11 +174,12 @@ const StoreProducts = () => {
   );
 
   return (
-    <Container style={{ backgroundColor: "#F3F4F6" }}>
-      <View style={styles.headerCustom}>
-        <HeaderApp title="Quản lý Thực đơn" />
-        <TouchableOpacity onPress={fetchProducts} style={{ padding: 10 }}>
-          <Ionicons name="refresh" size={24} color="white" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Thực đơn</Text>
+        <TouchableOpacity onPress={fetchProducts} style={{ padding: 4 }}>
+          <Feather name="refresh-cw" size={22} color="#ffffff" />
         </TouchableOpacity>
       </View>
 
@@ -194,17 +196,23 @@ const StoreProducts = () => {
       >
         <Feather name="plus" size={28} color="white" />
       </TouchableOpacity>
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  headerCustom: {
-    backgroundColor: colors.blue_primary,
+  header: {
+    backgroundColor: "#F97316",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingRight: 10,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 26,
+    fontWeight: "bold",
   },
   productCard: {
     flexDirection: "row",

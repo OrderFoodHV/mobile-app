@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
 import { formatDate } from "@app-helper/utilities";
-import { Container } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   getOrderListData,
   resetOrderListData,
@@ -17,7 +17,9 @@ import {
   FlatList,
   RefreshControl,
   StyleSheet,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useAppTheme } from "src/app-context/ThemeContext";
 
@@ -33,6 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const OrderList: React.FC = () => {
+  const navigation = useNavigation<any>();
   const { themeColors } = useAppTheme();
   const dispatch = useDispatch<AppDispatch>();
   const route = useRoute<any>();
@@ -156,16 +159,15 @@ const OrderList: React.FC = () => {
   );
 
   return (
-    <Container style={{ backgroundColor: themeColors.bg }}>
-      <HeaderCustom
-        title="Danh sách đơn hàng"
-        isShowLeftButton={!!trigger}
-        containerStyle={
-          trigger
-            ? { flexDirection: "row", justifyContent: "space-between" }
-            : { padding: 10 }
-        }
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Danh sách đơn hàng</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       <FlatList
         data={paginationOrderListData || []}
@@ -183,11 +185,27 @@ const OrderList: React.FC = () => {
         }}
         renderItem={renderItem}
       />
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.blue_primary || "#0284C7",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  backButton: {
+    padding: 4,
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 20,

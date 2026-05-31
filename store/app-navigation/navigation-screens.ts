@@ -37,8 +37,8 @@ export const ListStoreScreens: Record<string, any> = {
   },
   ShipperSettings: {
     name: "ShipperSettings",
-    // Chú ý: Trỏ đường dẫn tới file ShipperSettings.tsx sếp vừa tạo nhé
-    // Tớ đoán sếp đang để ở thư mục này, sếp chỉnh lại path nếu báo đỏ nha
+    // Chú ý: Trỏ đường dẫn tới file ShipperSettings.tsx bạn vừa tạo nhé
+    // Tớ đoán bạn đang để ở thư mục này, bạn chỉnh lại path nếu báo đỏ nha
     component: require("src/app-views/shipper/shipperSettings").default,
   },
 };

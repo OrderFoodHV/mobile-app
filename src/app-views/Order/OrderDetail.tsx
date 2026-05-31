@@ -11,7 +11,8 @@ import {
 import AppImage from "@app-uikits/AppImage";
 import { useRoute } from "@react-navigation/native";
 import { useSelector, shallowEqual } from "react-redux";
-import { Container, Content } from "@app-layout/Layout";
+import { Content } from "@app-layout/Layout";
+import { SafeAreaView } from "react-native-safe-area-context";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { RootState } from "@redux/store";
 import { useNavigationServices } from "@app-helper/navigateToScreens";
@@ -64,17 +65,21 @@ const OrderDetail: React.FC = () => {
 
   // Bùa ép trạng thái
   const rawStatus =
-    order?.order_status ||
     order?.status ||
-    passedData?.order_status ||
+    order?.order_status ||
     passedData?.status ||
+    passedData?.order_status ||
     "pending";
   let activeStatus = String(rawStatus).trim().toLowerCase();
-  if (
-    !["pending", "confirmed", "delivering", "completed", "cancelled"].includes(
-      activeStatus,
-    )
-  ) {
+  if (activeStatus === "quán đã nhận đơn" || activeStatus === "preparing" || activeStatus === "confirmed") {
+    activeStatus = "confirmed";
+  } else if (activeStatus === "đang giao hàng" || activeStatus === "delivering") {
+    activeStatus = "delivering";
+  } else if (activeStatus === "completed" || activeStatus === "hoàn thành" || activeStatus === "giao hàng thành công") {
+    activeStatus = "completed";
+  } else if (activeStatus === "đơn đã bị hủy" || activeStatus === "cancelled") {
+    activeStatus = "cancelled";
+  } else {
     activeStatus = "pending";
   }
   const currentStepIndex = STATUS_STEPS.indexOf(activeStatus);
@@ -88,7 +93,7 @@ const OrderDetail: React.FC = () => {
   else if (activeStatus === "delivering")
     statusBannerText = "🚀 Tài xế đang trên đường giao món đến bạn...";
   else if (activeStatus === "completed")
-    statusBannerText = "🎉 Đơn hàng giao thành công. Chúc sếp ngon miệng!";
+    statusBannerText = "🎉 Đơn hàng giao thành công. Chúc bạn ngon miệng!";
   else if (activeStatus === "cancelled")
     statusBannerText = "❌ Đơn hàng này đã bị hủy.";
 
@@ -115,7 +120,7 @@ const OrderDetail: React.FC = () => {
   useEffect(() => {
     fetchOrderDetails();
 
-    // Kết nối đến Server Socket Backend (Sếp nhớ đảm bảo URL_API hoặc địa chỉ IP trỏ đúng)
+    // Kết nối đến Server Socket Backend (bạn nhớ đảm bảo URL_API hoặc địa chỉ IP trỏ đúng)
     const socketUrl = URL_API
       ? URL_API.replace("/api", "")
       : "http://192.168.1.31:3000";
@@ -123,24 +128,24 @@ const OrderDetail: React.FC = () => {
 
     socket.on("connect", () => {
       console.log(
-        `🔌 Kết nối Socket thành công! Đăng ký vào phòng User ID: ${userId}`,
+        `🔌 Kết nối Socket thành công! Đăng ký vào phòng User ID: ${userId} và đơn: ${displayId}`,
       );
       socket.emit("register_user", userId);
+      socket.emit("join_order_room", { orderId: displayId });
     });
 
     // Nhận tín hiệu từ Quán / Shipper
-    socket.on("order_status_changed", (data: any) => {
+    socket.on("order_status_updated", (data: any) => {
       console.log("🔥 Nhận được tin Socket đổi trạng thái:", data);
-      if (String(data.order_id) === String(displayId)) {
-        setOrder((prev: any) => ({
-          ...prev,
-          status: data.new_status,
-          order_status: data.new_status,
-        }));
-      }
+      setOrder((prev: any) => ({
+        ...prev,
+        status: data.status,
+        order_status: data.status,
+      }));
     });
 
     return () => {
+      socket.emit("leave_order_room", { orderId: displayId });
       socket.disconnect();
     };
   }, [displayId, userId]);
@@ -149,7 +154,7 @@ const OrderDetail: React.FC = () => {
     if (!displayId || displayId === "Đang xử lý..." || !tokenData) return;
     Alert.alert(
       "Xác nhận hủy",
-      "Sếp có chắc chắn muốn hủy đơn hàng này không?",
+      "bạn có chắc chắn muốn hủy đơn hàng này không?",
       [
         { text: "Đóng", style: "cancel" },
         {
@@ -220,7 +225,7 @@ const OrderDetail: React.FC = () => {
   );
 
   return (
-    <Container style={{ backgroundColor: themeColors.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={["top", "left", "right"]}>
       <HeaderCustom
         title="Theo dõi đơn hàng"
         onPressLeft={
@@ -476,7 +481,7 @@ const OrderDetail: React.FC = () => {
           )}
         </View>
       </Content>
-    </Container>
+    </SafeAreaView>
   );
 };
 

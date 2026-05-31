@@ -1,3 +1,4 @@
+import React from "react";
 import { useNavigationServices } from "@app-helper/navigateToScreens";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
@@ -15,18 +16,41 @@ interface HeaderCustomProps {
 const HeaderCustom: React.FC<HeaderCustomProps> = ({ title, rightIcon, onPressLeft, isShowLeftButton = true, containerStyle }) => {
   const { goToBack } = useNavigationServices()
   return (
-    <View style={[{ ...styles_c.row_between }, containerStyle]}>
-      {isShowLeftButton &&   
-      <TouchableOpacity onPress={onPressLeft ? onPressLeft :goToBack} style={{ padding: 10 }}>
-        <Ionicons name="arrow-back-outline" size={sizes._25sdp} color={colors.black} />
-      </TouchableOpacity>
-      }
-      <View style={{  ...styles_c.col_center }}>
-        <Text style={{ ...styles_c.font_text_18_600, color: colors.black }}>{title}</Text>
-      </View>
-      <View>
-        {rightIcon}
-      </View>
+    <View style={[{ 
+      height: 56, 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      position: 'relative',
+      backgroundColor: colors.blue_primary,
+      paddingHorizontal: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    }, containerStyle]}>
+      {isShowLeftButton && (
+        <TouchableOpacity 
+          onPress={onPressLeft ? onPressLeft : goToBack} 
+          style={{ position: 'absolute', left: 16, padding: 4, zIndex: 10 }}
+        >
+          <Ionicons name="arrow-back-outline" size={24} color="#FFF" />
+        </TouchableOpacity>
+      )}
+      
+      <Text style={{ 
+        fontSize: 18, 
+        fontWeight: '700', 
+        color: '#FFF',
+        textAlign: 'center'
+      }}>{title}</Text>
+
+      {rightIcon && (
+        <View style={{ position: 'absolute', right: 16, zIndex: 10 }}>
+          {rightIcon}
+        </View>
+      )}
     </View>
   )
 }

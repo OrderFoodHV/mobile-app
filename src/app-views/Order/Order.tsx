@@ -1,4 +1,3 @@
-import { Container } from "@app-layout/Layout";
 import {
   View,
   Text,
@@ -7,7 +6,11 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
 import colors from "@assets/colors/global_colors";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
@@ -30,7 +33,7 @@ const Order: React.FC = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const token = useSelector((state: any) => state.auth.tokenData);
-  const { products, type } = route.params ?? { products: [] };
+  const { products, type, note } = route.params ?? { products: [] };
   const [addressList, setAddressList] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("COD");
@@ -38,6 +41,7 @@ const Order: React.FC = () => {
     label: "Thanh toán khi nhận hàng",
     value: "COD",
   });
+  const [orderNote, setOrderNote] = useState<string>(note || "");
   const { goToOrderInfo } = useNavigationComponentApp();
 
   useFocusEffect(
@@ -198,6 +202,7 @@ const Order: React.FC = () => {
       address,
       type,
       items,
+      note: orderNote,
     };
 
     goToOrderInfo({ data });
@@ -210,14 +215,19 @@ const Order: React.FC = () => {
   ];
 
   return (
-    <Container style={{ backgroundColor: "#F7F9FC" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F7F9FC" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <HeaderCustom
         title={"Xác nhận đặt hàng"}
         rightIcon={<View style={{ flex: 1 }} />}
       />
       <View style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* ADDRESS SECTION */}
@@ -228,7 +238,7 @@ const Order: React.FC = () => {
             </View>
             {addressList.length === 0 ? (
               <View style={styles.noAddressContainer}>
-                <Text style={styles.noAddressText}>Sếp chưa có địa chỉ giao hàng nào.</Text>
+                <Text style={styles.noAddressText}>bạn chưa có địa chỉ giao hàng nào.</Text>
                 <TouchableOpacity
                   style={styles.addAddressBtn}
                   onPress={() => navigation.navigate("AddressScreen")}
@@ -306,6 +316,25 @@ const Order: React.FC = () => {
                 </View>
               );
             })}
+          </View>
+
+          {/* NOTE SECTION */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Feather name="edit-3" size={18} color="#6B7280" style={{ marginRight: 8 }} />
+              <Text style={styles.cardTitle}>Ghi chú cho tài xế/nhà hàng</Text>
+            </View>
+            <View style={styles.noteInputContainer}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ví dụ: Ít cay, không hành, giao cổng sau..."
+                placeholderTextColor="#9CA3AF"
+                value={orderNote}
+                onChangeText={setOrderNote}
+                multiline={true}
+                numberOfLines={2}
+              />
+            </View>
           </View>
 
           {/* VOUCHER SECTION */}
@@ -409,11 +438,12 @@ const Order: React.FC = () => {
             {selectedVoucher && (
               <View style={styles.billingRow}>
                 <Text style={[styles.billingLabel, { color: "#10B981" }]}>Khấu trừ mã giảm giá</Text>
-                <Text style={[styles.billingValue, { color: "#10B981", fontWeight: "600" }]}>-{discountAmount.toLocaleString()} đ</Text>
+                  <Text style={[styles.billingValue, { color: "#10B981", fontWeight: "600" }]}>-{discountAmount.toLocaleString()} đ</Text>
               </View>
             )}
           </View>
         </ScrollView>
+      </KeyboardAvoidingView>
 
         {/* FLOATING ACTION BOTTOM BAR */}
         <View style={styles.checkoutFooter}>
@@ -433,7 +463,7 @@ const Order: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </Container>
+    </SafeAreaView>
   );
 };
 
@@ -758,6 +788,21 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "700",
+  },
+  noteInputContainer: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  noteInput: {
+    fontSize: 14,
+    color: "#1F2937",
+    minHeight: 48,
+    textAlignVertical: "top",
   },
 });
 

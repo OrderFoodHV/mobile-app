@@ -6,15 +6,81 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import useCallAPI from "src/app-helper/useCallAPI";
+import URL_API from "src/app-helper/urlAPI";
+import { updateAuthInfor } from "src/redux/features/authSlice";
 
 const StorePersonal: React.FC = () => {
   const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
   const user = useSelector((state: any) => state.auth.account);
+  const tokenData = useSelector((state: any) => state.auth.tokenData);
+
+  const handleGoToShipper = async () => {
+    if (!user)
+      return Alert.alert("Thông báo", "Vui lòng đăng nhập!");
+
+    if (!tokenData) return;
+
+    // Lấy thông tin mới nhất từ máy chủ ngay khi bấm vào nút
+    const res = await useCallAPI({
+      method: "GET",
+      url: `${URL_API}/users/me`,
+      token: tokenData,
+      showToast: false,
+    });
+
+    let currentIsShipper = Number(user?.is_shipper) === 1;
+    let currentShipperStatus = user?.shipperStatus;
+
+    if (res && res.success !== false) {
+      const profile = res;
+      let vehicleModel = profile.vehicle || "";
+      let licensePlate = "";
+      if (profile.vehicle && profile.vehicle.includes(",")) {
+        const parts = profile.vehicle.split(",");
+        vehicleModel = parts[0].trim();
+        licensePlate = parts[1].trim();
+      }
+      dispatch(
+        updateAuthInfor({
+          is_shipper: profile.is_shipper,
+          is_seller: profile.is_seller,
+          shipperStatus: profile.shipperStatus,
+          storeStatus: profile.storeStatus,
+          phone: profile.phone,
+          user_name: profile.name || profile.user_name,
+          vehicle: vehicleModel,
+          license_plate: licensePlate,
+          shipperPhone: profile.shipperPhone,
+        })
+      );
+      currentIsShipper = Number(profile.is_shipper) === 1;
+      currentShipperStatus = profile.shipperStatus;
+    }
+
+    if (currentIsShipper) {
+      // Đã đăng ký & được duyệt -> Bay thẳng vào màn chính Shipper
+      navigation.navigate("ShipperBottomContainer");
+    } else if (currentShipperStatus === "blocked") {
+      // Bị khóa -> Cho vào để thông báo khóa
+      navigation.navigate("ShipperBottomContainer");
+    } else if (currentShipperStatus === "pending") {
+      Alert.alert(
+        "Thông báo",
+        "Yêu cầu làm tài xế của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
+      );
+    } else {
+      // Chưa đăng ký hoặc bị xóa -> Vào màn Đăng ký để đăng ký lại
+      navigation.navigate("ShipperLanding");
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
@@ -48,7 +114,7 @@ const StorePersonal: React.FC = () => {
             <View style={styles.detailRow}>
               <Feather name="phone" size={16} color="#6B7280" />
               <Text style={styles.detailText}>
-                {user?.phone || "Chưa cập nhật SĐT"}
+                {user?.storePhone || user?.phone || "Chưa cập nhật SĐT"}
               </Text>
             </View>
             <View style={styles.detailRow}>
@@ -114,7 +180,7 @@ const StorePersonal: React.FC = () => {
 
             <TouchableOpacity
               style={[styles.menuItem, { borderBottomWidth: 0 }]}
-              onPress={() => navigation.navigate("ShipperBottomContainer")}
+              onPress={handleGoToShipper}
             >
               <View style={styles.menuLeft}>
                 <View

@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
-import { Container, Content, Footer } from "@app-layout/Layout";
+import { Content, Footer } from "@app-layout/Layout";
 import CheckBox from "@app-components/CheckBoxCustom/CheckBoxCustom";
 import colors from "@assets/colors/global_colors";
 import AppImage from "@app-uikits/AppImage";
@@ -28,6 +30,7 @@ import {
   resetIncreaseProductQuantityInCartResponse,
   updateQuantityOfProductInCart,
 } from "@redux/features/cartSlice";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Cart: React.FC = () => {
   const { goToProductDetail, goToOrder } = useNavigationComponentApp();
@@ -195,7 +198,7 @@ const Cart: React.FC = () => {
     } else {
       Alert.alert(
         "Thông báo",
-        "Sếp vui lòng chọn món ăn muốn thanh toán đã nhé!",
+        "bạn vui lòng chọn món ăn muốn thanh toán đã nhé!",
       );
     }
   };
@@ -203,12 +206,19 @@ const Cart: React.FC = () => {
   const hasItems = productCartListData && productCartListData.length > 0;
 
   return (
-    <Container style={{ backgroundColor: "#F7F9FC" }}>
-      <HeaderCustom title="Giỏ hàng" isShowLeftButton={false} />
-      <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }} edges={["top", "left", "right"]}>
+      <HeaderCustom title="Giỏ hàng" isShowLeftButton={true} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
         {hasItems ? (
           <FlatList
-            data={[1]}
+            data={productCartListData || []}
+            keyExtractor={(item, index) =>
+              item?.product_id ? item.product_id.toString() : index.toString()
+            }
             showsVerticalScrollIndicator={false}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.7}
@@ -216,104 +226,98 @@ const Cart: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefreshData} />
             }
-            renderItem={() => (
-              <Fragment>
-                <View style={styles.sectionHeader}>
-                  <Feather name="shopping-bag" size={16} color={colors.blue_primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.sectionTitle}>Món đã thêm vào giỏ</Text>
+            ListHeaderComponent={
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderIconBg}>
+                  <Feather name="shopping-bag" size={16} color={colors.blue_primary} />
                 </View>
-                <FlatList
-                  data={productCartListData || []}
-                  keyExtractor={(item, index) =>
-                    item?.product_id ? item.product_id.toString() : index.toString()
-                  }
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
-                    <View style={styles.itemCard}>
-                      <CheckBox
-                        checked={selectedProductIds.includes(Number(item.product_id))}
-                        onPress={() => toggleSelection(Number(item.product_id))}
-                        containerStyle={styles.checkbox}
-                      />
-
-                      <AppImage
-                        source={{ uri: item.image }}
-                        style={styles.image}
-                        resizeMode={"cover"}
-                      />
-
-                      <View style={styles.itemInfo}>
-                        <Text style={styles.name} numberOfLines={2}>
-                          {item.name}
-                        </Text>
-                        <Text style={styles.price}>
-                          {Number(item.price).toLocaleString()} đ
-                        </Text>
-
-                        <View style={styles.quantityContainer}>
-                          <TouchableOpacity
-                            onPress={() =>
-                              onUpdateProductQuantity({
-                                cart_id: item.cart_id,
-                                price: item.price,
-                                product_id: item.product_id,
-                                quantity: item.quantity,
-                                type: "decrease",
-                              })
-                            }
-                            style={styles.qtyBtn}
-                            activeOpacity={0.7}
-                          >
-                            <Feather name="minus" size={12} color="#4B5563" />
-                          </TouchableOpacity>
-
-                          <Text style={styles.qtyText}>{item.quantity}</Text>
-
-                          <TouchableOpacity
-                            onPress={() =>
-                              onUpdateProductQuantity({
-                                cart_id: item.cart_id,
-                                price: item.price,
-                                product_id: item.product_id,
-                                quantity: item.quantity,
-                                type: "increase",
-                              })
-                            }
-                            style={styles.qtyBtn}
-                            activeOpacity={0.7}
-                          >
-                            <Feather name="plus" size={12} color="#4B5563" />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() =>
-                          dispatch(
-                            removeProductInCart({
-                              product_id: item?.product_id,
-                              cart_id: item?.cart_id,
-                              token: tokenData || undefined,
-                            }),
-                          )
-                        }
-                        style={styles.deleteButton}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="trash-2" size={16} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                <Text style={styles.sectionTitle}>Món ăn đã thêm</Text>
+                <Text style={styles.sectionBadge}>({productCartListData.length})</Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={styles.itemCard}>
+                <CheckBox
+                  checked={selectedProductIds.includes(Number(item.product_id))}
+                  onPress={() => toggleSelection(Number(item.product_id))}
+                  containerStyle={styles.checkbox}
                 />
-              </Fragment>
+
+                <AppImage
+                  source={{ uri: item.image }}
+                  style={styles.image}
+                  resizeMode={"cover"}
+                />
+
+                <View style={styles.itemInfo}>
+                  <Text style={styles.name} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.price}>
+                    {Number(item.price).toLocaleString()} đ
+                  </Text>
+
+                  <View style={styles.quantityContainer}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        onUpdateProductQuantity({
+                          cart_id: item.cart_id,
+                          price: item.price,
+                          product_id: item.product_id,
+                          quantity: item.quantity,
+                          type: "decrease",
+                        })
+                      }
+                      style={styles.qtyBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="minus" size={12} color="#4B5563" />
+                    </TouchableOpacity>
+
+                    <Text style={styles.qtyText}>{item.quantity}</Text>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        onUpdateProductQuantity({
+                          cart_id: item.cart_id,
+                          price: item.price,
+                          product_id: item.product_id,
+                          quantity: item.quantity,
+                          type: "increase",
+                        })
+                      }
+                      style={styles.qtyBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="plus" size={12} color="#4B5563" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    dispatch(
+                      removeProductInCart({
+                        product_id: item?.product_id,
+                        cart_id: item?.cart_id,
+                        token: tokenData || undefined,
+                      }),
+                    )
+                  }
+                  style={styles.deleteButton}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="trash-2" size={15} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
             )}
           />
         ) : (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBg}>
-              <Feather name="shopping-cart" size={48} color="#9CA3AF" />
+              <Feather name="shopping-cart" size={48} color={colors.blue_primary} />
             </View>
-            <Text style={styles.emptyText}>Giỏ hàng đang trống trơn sếp ơi</Text>
+            <Text style={styles.emptyText}>Giỏ hàng đang trống trơn bạn ơi</Text>
             <Text style={styles.emptySubtext}>Hãy quay lại thực đơn để chọn những món ăn hấp dẫn nhen!</Text>
           </View>
         )}
@@ -321,7 +325,7 @@ const Cart: React.FC = () => {
         {hasItems && (
           <View style={styles.footerWrapper}>
             <View style={styles.noteWrapper}>
-              <Feather name="edit-3" size={14} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <Feather name="edit-3" size={14} color={colors.blue_primary} style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.noteInput}
                 placeholder="Ghi chú (Ví dụ: Ít cay, không hành...)"
@@ -345,49 +349,65 @@ const Cart: React.FC = () => {
             </View>
           </View>
         )}
-      </View>
-    </Container>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   listContent: {
-    paddingBottom: 150,
+    paddingBottom: 180,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
+    paddingBottom: 8,
+  },
+  sectionHeaderIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#374151",
+    color: "#1F2937",
+  },
+  sectionBadge: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    marginLeft: 6,
   },
   itemCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    marginHorizontal: 14,
-    marginBottom: 8,
-    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 16,
     backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
   },
   checkbox: { 
-    marginRight: 8,
+    marginRight: 6,
   },
   image: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#F9FAFB",
   },
   itemInfo: {
     flex: 1,
@@ -395,48 +415,49 @@ const styles = StyleSheet.create({
   },
   name: { 
     fontSize: 14, 
-    fontWeight: "600", 
+    fontWeight: "700", 
     color: "#1F2937",
     marginBottom: 4,
+    lineHeight: 18,
   },
   price: { 
     fontSize: 13, 
     color: "#EF4444", 
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 6,
   },
   quantityContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F3F4F6",
-    borderRadius: 15,
-    padding: 3,
+    borderRadius: 20,
+    padding: 4,
     alignSelf: "flex-start",
   },
   qtyBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
     elevation: 1,
   },
   qtyText: { 
-    fontSize: 12, 
-    fontWeight: "600", 
+    fontSize: 13, 
+    fontWeight: "700", 
     color: "#1F2937",
     marginHorizontal: 10,
   },
   deleteButton: {
     marginLeft: 10,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#FEF2F2",
     justifyContent: "center",
     alignItems: "center",
@@ -446,28 +467,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
-    paddingBottom: 80,
+    paddingTop: 100,
   },
   emptyIconBg: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#E5E7EB",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#EFF6FF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    shadowColor: colors.blue_primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
-    color: "#374151",
+    color: "#1F2937",
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#6B7280",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 20,
   },
   footerWrapper: {
     position: "absolute",
@@ -475,28 +501,28 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: "#F3F4F6",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 16,
+    elevation: 10,
   },
   noteWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
     backgroundColor: "#F3F4F6",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   noteInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: "#1F2937",
     padding: 0,
   },
@@ -509,31 +535,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priceLabel: { 
-    fontSize: 11, 
+    fontSize: 12, 
     color: "#6B7280",
     marginBottom: 2,
+    fontWeight: "500",
   },
   priceValue: { 
-    fontSize: 18, 
+    fontSize: 20, 
     fontWeight: "800", 
     color: "#EF4444",
   },
   button: {
     backgroundColor: colors.blue_primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: colors.blue_primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: { 
     color: "#fff", 
-    fontSize: 15, 
+    fontSize: 16, 
     fontWeight: "700",
   },
 });

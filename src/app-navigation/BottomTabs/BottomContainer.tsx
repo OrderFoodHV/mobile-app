@@ -45,7 +45,7 @@ const BottomContainer = ({
       // Hiển thị thông báo popup cho người dùng
       Alert.alert(
         "Chúc mừng! 🎉",
-        data.message || "Yêu cầu mở cửa hàng của sếp đã được duyệt thành công! Sếp có thể vào Kênh người bán ngay bây giờ.",
+        data.message || "Yêu cầu mở cửa hàng của bạn đã được duyệt thành công! bạn có thể vào Kênh người bán ngay bây giờ.",
         [{ text: "XÁC NHẬN" }]
       );
     });
@@ -67,7 +67,7 @@ const BottomContainer = ({
       // Hiển thị thông báo popup cho người dùng
       Alert.alert(
         "Thông báo từ Admin ❌",
-        data.message || "Cửa hàng của sếp đã bị Admin xóa khỏi hệ thống. Vui lòng đăng ký lại nếu muốn tiếp tục bán hàng.",
+        data.message || "Cửa hàng của bạn đã bị Admin xóa khỏi hệ thống. Vui lòng đăng ký lại nếu muốn tiếp tục bán hàng.",
         [{ text: "XÁC NHẬN" }]
       );
     });

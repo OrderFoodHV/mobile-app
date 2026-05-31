@@ -78,7 +78,7 @@ const ShipperLanding = () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.headerContainer}>
-        {/* Nếu sếp có logo, thay require('./logo.png') vào source nhé, tạm thời tớ để View */}
+        {/* Nếu bạn có logo, thay require('./logo.png') vào source nhé, tạm thời tớ để View */}
         <View style={styles.logoPlaceholder}>
           <Text style={styles.logoText}>🏍️</Text>
         </View>

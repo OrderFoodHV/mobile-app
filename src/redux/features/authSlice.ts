@@ -55,6 +55,7 @@ const persistAuthData = async (payload: any) => {
     storeId: payload.user?.storeId,
     storeName: payload.user?.storeName,
     storeAddress: payload.user?.storeAddress,
+    storePhone: payload.user?.storePhone,
     storeStatus: payload.user?.storeStatus,
     shipperStatus: payload.user?.shipperStatus,
     vehicle: payload.user?.vehicle,
@@ -141,7 +142,7 @@ const authSlice = createSlice({
           ...state.account, // Giữ nguyên các data cũ
           // Cập nhật đè dữ liệu mới nếu có truyền vào
           user_name: action.payload.user_name || state.account.user_name,
-          name: action.payload.name || state.account.name, // Thêm dòng này để phòng sếp dùng chữ 'name'
+          name: action.payload.name || state.account.name, // Thêm dòng này để phòng bạn dùng chữ 'name'
           phone: action.payload.phone || state.account.phone,
           is_shipper: action.payload.is_shipper !== undefined ? action.payload.is_shipper : state.account.is_shipper,
           is_seller: action.payload.is_seller !== undefined ? action.payload.is_seller : state.account.is_seller,
@@ -149,6 +150,8 @@ const authSlice = createSlice({
           storeName: action.payload.storeName !== undefined ? action.payload.storeName : state.account.storeName,
           storeAddress:
             action.payload.storeAddress !== undefined ? action.payload.storeAddress : state.account.storeAddress,
+          storePhone:
+            action.payload.storePhone !== undefined ? action.payload.storePhone : state.account.storePhone,
           storeStatus: action.payload.storeStatus !== undefined ? action.payload.storeStatus : state.account.storeStatus,
           shipperStatus: action.payload.shipperStatus !== undefined ? action.payload.shipperStatus : state.account.shipperStatus,
 
@@ -173,6 +176,8 @@ const authSlice = createSlice({
           storeName: action.payload.storeName !== undefined ? action.payload.storeName : state.user.storeName,
           storeAddress:
             action.payload.storeAddress !== undefined ? action.payload.storeAddress : state.user.storeAddress,
+          storePhone:
+            action.payload.storePhone !== undefined ? action.payload.storePhone : state.user.storePhone,
           storeStatus: action.payload.storeStatus !== undefined ? action.payload.storeStatus : state.user.storeStatus,
           shipperStatus: action.payload.shipperStatus !== undefined ? action.payload.shipperStatus : state.user.shipperStatus,
           vehicle: action.payload.vehicle !== undefined ? action.payload.vehicle : state.user.vehicle,
@@ -210,6 +215,7 @@ const authSlice = createSlice({
           storeId: localAccount.storeId || null,
           storeName: localAccount.storeName || null,
           storeAddress: localAccount.storeAddress || null,
+          storePhone: localAccount.storePhone || null,
           storeStatus: localAccount.storeStatus || null,
           shipperStatus: localAccount.shipperStatus || null,
           vehicle: localAccount.vehicle || null,
