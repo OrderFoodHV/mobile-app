@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
@@ -22,6 +23,7 @@ const UserOrderTracking = ({ route, navigation }: any) => {
   // Bản đồ trạng thái (State Machine)
   const [orderStatus, setOrderStatus] = useState("pending");
   const [driverInfo, setDriverInfo] = useState<any>(null);
+  const [deliveryPhoto, setDeliveryPhoto] = useState<string | null>(null);
 
   // Fetch initial status from backend on mount
   useEffect(() => {
@@ -36,6 +38,7 @@ const UserOrderTracking = ({ route, navigation }: any) => {
         });
         const orderInfo = res?.data?.order_info || res?.order_info;
         if (orderInfo) {
+          setDeliveryPhoto(orderInfo.delivery_photo || null);
           const dbStatus = orderInfo.status;
           if (dbStatus === "Quán đã nhận đơn") {
             setOrderStatus("preparing");
@@ -67,6 +70,10 @@ const UserOrderTracking = ({ route, navigation }: any) => {
     socket.on("order_status_updated", (data) => {
       setOrderStatus(data.status); // Cập nhật trạng thái
 
+      if (data.deliveryPhoto) {
+        setDeliveryPhoto(data.deliveryPhoto);
+      }
+
       // Nếu có thông tin tài xế thì lưu lại để vẽ UI
       if (data.driver) {
         setDriverInfo(data.driver);
@@ -79,6 +86,37 @@ const UserOrderTracking = ({ route, navigation }: any) => {
       socket.off("order_status_updated");
     };
   }, [orderId]);
+
+  const handleDisputeOrder = async () => {
+    if (!token) return;
+    Alert.alert(
+      "Xác nhận khiếu nại ⚠️",
+      "Bạn chắc chắn muốn khiếu nại đơn hàng này chưa được giao tới bạn chứ? Ban quản trị sẽ đối soát ảnh chụp bằng chứng từ tài xế để phân xử.",
+      [
+        { text: "Quay lại", style: "cancel" },
+        {
+          text: "Gửi khiếu nại",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await useCallAPI({
+                method: "PATCH",
+                url: `${URL_API}/tracking/${orderId}/status`,
+                token: token,
+                data: { status: "disputed" }
+              });
+              if (res) {
+                setOrderStatus("disputed");
+                socket.emit("order_status_updated", { orderId, status: "disputed" });
+              }
+            } catch (err) {
+              console.log("Lỗi khiếu nại:", err);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // Hàm render giao diện tùy theo Trạng thái
   const renderStatusUI = () => {
@@ -165,9 +203,39 @@ const UserOrderTracking = ({ route, navigation }: any) => {
             >
               🎉 Đơn hàng hoàn tất! 🎉
             </Text>
-            <TouchableOpacity style={styles.rateBtn}>
-              <Text style={styles.rateText}>Đánh giá đơn hàng</Text>
-            </TouchableOpacity>
+
+            {deliveryPhoto && (
+              <View style={styles.proofContainer}>
+                <Text style={styles.proofTitle}>📸 Ảnh xác thực từ shipper:</Text>
+                <Image source={{ uri: deliveryPhoto }} style={styles.proofImage} />
+              </View>
+            )}
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 20, width: "100%" }}>
+              <TouchableOpacity
+                style={[styles.rateBtn, { backgroundColor: "#EF4444", flex: 1, marginTop: 0 }]}
+                onPress={handleDisputeOrder}
+              >
+                <Text style={styles.rateText}>Khiếu nại chưa nhận</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rateBtn, { backgroundColor: "#F59E0B", flex: 1, marginTop: 0 }]}>
+                <Text style={styles.rateText}>Đánh giá đơn</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      case "disputed":
+        return (
+          <View style={styles.statusBox}>
+            <Feather name="alert-triangle" size={60} color="#EF4444" />
+            <Text
+              style={[styles.statusTitle, { color: "#EF4444", marginTop: 10 }]}
+            >
+              ⚠️ Đang khiếu nại đơn hàng ⚠️
+            </Text>
+            <Text style={styles.statusSub}>
+              Hệ thống đã nhận khiếu nại của bạn và đang kiểm tra hình ảnh bằng chứng giao hàng của tài xế.
+            </Text>
           </View>
         );
       default:
@@ -269,5 +337,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   rateText: { color: "#fff", fontWeight: "bold" },
+  proofContainer: {
+    marginTop: 15,
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#F9FAFB",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  proofTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4B5563",
+    marginBottom: 8,
+  },
+  proofImage: {
+    width: 180,
+    height: 130,
+    borderRadius: 8,
+    resizeMode: "cover",
+  },
 });
 export default UserOrderTracking;

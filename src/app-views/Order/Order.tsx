@@ -96,6 +96,44 @@ const Order: React.FC = () => {
     fetchFees();
   }, []);
 
+  const [storeDetail, setStoreDetail] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStoreDetail = async () => {
+      const storeId = products[0]?.store_id || 1;
+      try {
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/products/store/${storeId}`,
+          showToast: false,
+        });
+        const details = res?.data || res;
+        if (details) {
+          setStoreDetail(details);
+        }
+      } catch (err) {
+        console.log("Lỗi tải thông tin cửa hàng:", err);
+      }
+    };
+    fetchStoreDetail();
+  }, [products]);
+
+  const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+    const R = 6371; // Bán kính Trái Đất (km)
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    return parseFloat((distance * 1.3).toFixed(1)); // Nhân hệ số 1.3 ước lượng đường bộ
+  };
+
   const availableVouchers = [
     {
       id: 1,
@@ -129,23 +167,27 @@ const Order: React.FC = () => {
     return sum + price * qty;
   }, 0);
 
+  const selectedAddress = addressList.find((item) => item.id.toString() === selectedAddressId);
+  const distance = (selectedAddress?.latitude && selectedAddress?.longitude && storeDetail?.latitude && storeDetail?.longitude)
+    ? calculateHaversineDistance(
+        Number(storeDetail.latitude),
+        Number(storeDetail.longitude),
+        Number(selectedAddress.latitude),
+        Number(selectedAddress.longitude)
+      )
+    : 0;
+
   const shippingFeeItem = fees.find(f => f.fee_type === 'shipping_fee' && f.status === 'active');
   let shippingFee = 0;
   if (shippingFeeItem) {
-    let applyFee = true;
-    if (shippingFeeItem.condition_type === 'under_subtotal' && shippingFeeItem.condition_value != null) {
-      applyFee = subTotalPrice < Number(shippingFeeItem.condition_value);
-    } else if (shippingFeeItem.condition_type === 'above_subtotal' && shippingFeeItem.condition_value != null) {
-      applyFee = subTotalPrice >= Number(shippingFeeItem.condition_value);
-    }
+    const baseFee = Number(shippingFeeItem.fee_value || 15000);
+    const baseDistance = Number(shippingFeeItem.condition_value || 2);
+    const extraFeePerKm = Number(shippingFeeItem.extra_value || 0);
 
-    if (applyFee) {
-      const val = Number(shippingFeeItem.fee_value);
-      if (shippingFeeItem.calculation_type === 'percentage') {
-        shippingFee = (subTotalPrice * val) / 100;
-      } else {
-        shippingFee = val;
-      }
+    if (distance === 0 || distance <= baseDistance) {
+      shippingFee = baseFee;
+    } else {
+      shippingFee = baseFee + Math.round((distance - baseDistance) * extraFeePerKm);
     }
   }
 
@@ -195,6 +237,7 @@ const Order: React.FC = () => {
       total_price: formatCurrencyToNumber(finalTotalPrice),
       shipping_fee: shippingFee,
       service_fee: serviceFee,
+      distance: distance,
       voucher_code: selectedVoucher?.code || null,
       order_status: "pending",
       payment_method: payment_method_data,
@@ -426,7 +469,9 @@ const Order: React.FC = () => {
               <Text style={styles.billingValue}>{subTotalPrice.toLocaleString()} đ</Text>
             </View>
             <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Phí giao hàng (Ship)</Text>
+              <Text style={styles.billingLabel}>
+                Phí giao hàng (Ship){distance > 0 ? ` • ${distance} km` : ""}
+              </Text>
               <Text style={styles.billingValue}>+{shippingFee.toLocaleString()} đ</Text>
             </View>
             {serviceFee > 0 && (

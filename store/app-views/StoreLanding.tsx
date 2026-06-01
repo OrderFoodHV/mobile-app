@@ -190,27 +190,44 @@ const StoreLanding: React.FC = () => {
           );
         }
 
+        // 3. Tìm Phường/Xã
+        const osmWardName = raw.suburb || raw.subdistrict || raw.village || raw.ward || "";
+        let foundW: any = null;
+
         if (foundDist) {
           const selectedDist = { code: Number(foundDist.Id), name: foundDist.Name };
           setDistrict(selectedDist);
-
-          // 3. Tìm Phường/Xã trong Quận đã tìm được
-          const osmWardName = raw.suburb || raw.subdistrict || raw.village || raw.ward || "";
-          let foundW: any = null;
           if (osmWardName && foundDist.Wards) {
             foundW = foundDist.Wards.find((w: any) => 
               w.Name.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim() === osmWardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim()
             );
           }
-
-          if (foundW) {
-            setWard({ code: Number(foundW.Id), name: foundW.Name });
+        } else if (osmWardName && foundProv.Districts) {
+          // Fallback: Tìm ngược Quận/Huyện thông qua Phường/Xã nếu OSM không trả về thông tin Quận/Huyện trực tiếp
+          for (const dist of foundProv.Districts) {
+            if (dist.Wards) {
+              const matchW = dist.Wards.find((w: any) =>
+                w.Name.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim() === osmWardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim()
+              );
+              if (matchW) {
+                foundDist = dist;
+                foundW = matchW;
+                
+                const selectedDist = { code: Number(dist.Id), name: dist.Name };
+                setDistrict(selectedDist);
+                break;
+              }
+            }
           }
+        }
+
+        if (foundW) {
+          setWard({ code: Number(foundW.Id), name: foundW.Name });
         }
       }
 
-      // Gợi ý tên đường/số nhà
-      const road = raw.road || raw.suburb || "";
+      // Gợi ý tên đường/số nhà (không dùng suburb nếu đã dùng làm phường/xã)
+      const road = raw.road || "";
       const houseNumber = raw.house_number || "";
       const suggestedStreet = houseNumber ? `${houseNumber} ${road}`.trim() : road.trim();
       if (suggestedStreet) {

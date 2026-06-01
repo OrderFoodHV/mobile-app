@@ -269,38 +269,57 @@ const AddressScreen: React.FC = () => {
           );
         }
 
+        // 3. Tìm Phường/Xã
+        const osmWardName = raw.suburb || raw.subdistrict || raw.village || raw.ward || "";
+        let foundW: any = null;
+
         if (foundDist) {
           const selectedDist = { code: Number(foundDist.Id), name: foundDist.Name };
           if (isAdd) {
             setNewDistrict(selectedDist);
-            setNewWard(null);
           } else {
             setEditDistrict(selectedDist);
-            setEditWard(null);
           }
-
-          // 3. Tìm Phường/Xã trong Quận đã tìm được
-          const osmWardName = raw.suburb || raw.subdistrict || raw.village || raw.ward || "";
-          let foundW: any = null;
           if (osmWardName && foundDist.Wards) {
             foundW = foundDist.Wards.find((w: any) => 
               w.Name.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim() === osmWardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim()
             );
           }
-
-          if (foundW) {
-            const selectedWard = { code: Number(foundW.Id), name: foundW.Name };
-            if (isAdd) {
-              setNewWard(selectedWard);
-            } else {
-              setEditWard(selectedWard);
+        } else if (osmWardName && foundProv.Districts) {
+          // Fallback: Tìm ngược Quận/Huyện thông qua Phường/Xã nếu OSM không trả về thông tin Quận/Huyện trực tiếp
+          for (const dist of foundProv.Districts) {
+            if (dist.Wards) {
+              const matchW = dist.Wards.find((w: any) =>
+                w.Name.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim() === osmWardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/g, "").trim()
+              );
+              if (matchW) {
+                foundDist = dist;
+                foundW = matchW;
+                
+                const selectedDist = { code: Number(dist.Id), name: dist.Name };
+                if (isAdd) {
+                  setNewDistrict(selectedDist);
+                } else {
+                  setEditDistrict(selectedDist);
+                }
+                break;
+              }
             }
+          }
+        }
+
+        if (foundW) {
+          const selectedWard = { code: Number(foundW.Id), name: foundW.Name };
+          if (isAdd) {
+            setNewWard(selectedWard);
+          } else {
+            setEditWard(selectedWard);
           }
         }
       }
 
-      // Gợi ý tên đường/số nhà
-      const road = raw.road || raw.suburb || "";
+      // Gợi ý tên đường/số nhà (không fallback vào suburb nếu suburb đã dùng làm phường/xã)
+      const road = raw.road || "";
       const houseNumber = raw.house_number || "";
       const suggestedStreet = houseNumber ? `${houseNumber} ${road}`.trim() : road.trim();
       if (suggestedStreet) {

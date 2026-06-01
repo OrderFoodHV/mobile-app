@@ -12,6 +12,7 @@ import {
 import { WebView } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface MapPickerModalProps {
   visible: boolean;
@@ -138,6 +139,7 @@ const MapPickerModal: React.FC<MapPickerModalProps> = ({
       const response = await fetch(url, {
         headers: {
           "User-Agent": "FoodApp/1.0 (contact@foodapp.com)",
+          "Accept-Language": "vi",
         },
       });
       if (response.ok) {
@@ -168,6 +170,7 @@ const MapPickerModal: React.FC<MapPickerModalProps> = ({
       const response = await fetch(url, {
         headers: {
           "User-Agent": "FoodApp/1.0 (contact@foodapp.com)",
+          "Accept-Language": "vi",
         },
       });
       if (response.ok) {
@@ -299,7 +302,7 @@ const MapPickerModal: React.FC<MapPickerModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
@@ -358,7 +361,7 @@ const MapPickerModal: React.FC<MapPickerModalProps> = ({
             />
           )}
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };

@@ -21,6 +21,7 @@ import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 import { updateAuthInfor, resetAllAuth } from "src/redux/features/authSlice";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 
 const ShipperHome = () => {
   const navigation = useNavigation<any>();
@@ -65,27 +66,43 @@ const ShipperHome = () => {
               })
             );
           
-          // Nếu không còn là shipper nữa (bị xóa hoặc bị khóa)
-          // Nếu bị xóa (is_shipper !== 1 và shipperStatus không phải blocked) thì đá ra ngoài bắt đăng ký lại
-          if (Number(profile.is_shipper) !== 1 && profile.shipperStatus !== "blocked") {
-            Alert.alert(
-              "Thông báo",
-              "Tài khoản của bạn đã bị hủy quyền tài xế. Vui lòng đăng ký lại!",
-              [
-                {
-                  text: "Đồng ý",
-                  onPress: () => {
-                    navigation.navigate("BottomContainer");
+            // Nếu không còn là shipper nữa (bị xóa hoặc bị khóa)
+            // Nếu bị xóa (is_shipper !== 1 và shipperStatus không phải blocked) thì đá ra ngoài bắt đăng ký lại
+            if (Number(profile.is_shipper) !== 1 && profile.shipperStatus !== "blocked") {
+              Alert.alert(
+                "Thông báo",
+                "Tài khoản của bạn đã bị hủy quyền tài xế. Vui lòng đăng ký lại!",
+                [
+                  {
+                    text: "Đồng ý",
+                    onPress: () => {
+                      navigation.navigate("BottomContainer");
+                    },
                   },
-                },
-              ]
-            );
+                ]
+              );
+            }
           }
         }
-       }
+      };
+
+      const fetchCurrentOrder = async () => {
+        const token = user?.tokenData;
+        if (!token) return;
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/shippers/current-order`,
+          token: token,
+          showToast: false,
+        });
+        if (isMounted && res && res.success && res.data) {
+          setCurrentOrder(res.data);
+          setIsOnline(true); // Automatically go online if there is an active running order
+        }
       };
       
       checkShipperStatus();
+      fetchCurrentOrder();
       return () => {
         isMounted = false;
       };
@@ -223,6 +240,10 @@ const ShipperHome = () => {
         if (user?.user?.id) {
           socket.emit("register_user", user.user.id);
         }
+        if (currentOrder) {
+          const orderId = currentOrder.orderId || currentOrder.id;
+          socket.emit("join_order_room", { orderId });
+        }
       };
 
       if (socket.connected) {
@@ -243,9 +264,24 @@ const ShipperHome = () => {
           return [...prev, orderData];
         });
       });
+
+      socket.on("order_status_updated", (data: any) => {
+        console.log("🔔 [Socket] Order status updated in Shipper:", data);
+        if (data.status) {
+          setCurrentOrder((prev: any) => {
+            if (!prev) return null;
+            const dbStatus = data.status === "delivering" ? "Đang giao hàng" : data.status;
+            return {
+              ...prev,
+              status: dbStatus,
+            };
+          });
+        }
+      });
     } else {
       socket.off("connect");
       socket.off("broadcast_new_order");
+      socket.off("order_status_updated");
       if (socket.connected) socket.disconnect();
       setOrderQueue([]);
       setCurrentOrder(null);
@@ -254,8 +290,9 @@ const ShipperHome = () => {
     return () => {
       socket.off("connect");
       socket.off("broadcast_new_order");
+      socket.off("order_status_updated");
     };
-  }, [isOnline]); // Chỉ phụ thuộc vào isOnline, không tái đăng ký khi state đơn thay đổi
+  }, [isOnline, currentOrder?.orderId || currentOrder?.id]);
 
   const handleCallCustomer = (phone: string) => {
     if (!phone || phone === "Chưa cập nhật") {
@@ -288,7 +325,10 @@ const ShipperHome = () => {
           driverData: { name: displayName },
         });
         // Chuyển sang trạng thái giao hàng và xóa khỏi hàng đợi
-        setCurrentOrder(order);
+        setCurrentOrder({
+          ...order,
+          status: "Quán đã nhận đơn"
+        });
         setOrderQueue((prev) => prev.filter((o) => o.orderId !== order.orderId));
       } else {
         Alert.alert("Thất bại", res?.message || "Không thể nhận đơn này!");
@@ -306,6 +346,28 @@ const ShipperHome = () => {
 
   const handleCompleteOrder = async () => {
     if (!currentOrder) return;
+    
+    // Yêu cầu quyền truy cập Camera
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Quyền máy ảnh bị từ chối 📸", "Bạn cần cho phép quyền truy cập máy ảnh để chụp hình bằng chứng giao hàng.");
+      return;
+    }
+
+    // Mở máy ảnh chụp hình
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      Alert.alert("Thông báo ⚠️", "Bạn bắt buộc phải chụp ảnh xác thực (gói đồ ăn đã giao) để hoàn thành đơn hàng!");
+      return;
+    }
+
+    const imageUri = result.assets[0].uri;
     const token = user?.tokenData;
     if (!token) {
       Alert.alert("Lỗi", "Vui lòng đăng nhập lại!");
@@ -313,18 +375,50 @@ const ShipperHome = () => {
     }
 
     try {
+      // 1. Tải ảnh bằng chứng lên máy chủ thông qua API upload dùng chung
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image`;
+
+      formData.append('image', {
+        uri: imageUri,
+        name: filename,
+        type
+      } as any);
+
+      const uploadRes = await fetch(`${URL_API}/upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const uploadResult = await uploadRes.json();
+      if (!uploadResult || !uploadResult.success) {
+        Alert.alert("Thất bại", "Không thể tải ảnh bằng chứng lên máy chủ. Vui lòng thử lại!");
+        return;
+      }
+
+      const imageUrl = uploadResult.imageUrl;
+
+      // 2. Gọi API hoàn tất đơn hàng và truyền url ảnh bằng chứng
       const res = await useCallAPI({
         method: "PATCH",
         url: `${URL_API}/shippers/complete/${currentOrder.orderId}`,
         token: token,
+        data: { deliveryPhoto: imageUrl }
       });
 
       if (res && res.success !== false) {
         socket.emit("driver_completed", { orderId: currentOrder.orderId });
 
+        const actualEarn = res.earnAmount !== undefined ? res.earnAmount : Number(currentOrder.shipping_fee);
         Alert.alert(
           "Thành công 🎉",
-          `bạn đã hoàn thành đơn #${currentOrder.orderId}! +${Number(currentOrder.shipping_fee).toLocaleString()}đ đã được cộng vào ví thu nhập.`,
+          `Bạn đã hoàn thành đơn #${currentOrder.orderId}! +${Number(actualEarn).toLocaleString()}đ đã được cộng vào ví thu nhập.`,
         );
         setCurrentOrder(null);
       } else {
@@ -480,6 +574,12 @@ const ShipperHome = () => {
                 </Text>
               </View>
 
+              {(currentOrder?.status !== "Đang giao hàng" && currentOrder?.status !== "delivering") && (
+                <Text style={{ color: "#EA580C", fontSize: 13, fontWeight: "600", textAlign: "center", marginBottom: 10, fontStyle: "italic" }}>
+                  * Vui lòng đợi quán chuẩn bị xong và bấm "Giao cho Tài xế" để nhận món.
+                </Text>
+              )}
+
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={styles.callButton}
@@ -488,12 +588,18 @@ const ShipperHome = () => {
                   <Feather name="phone-call" size={18} color="#fff" />
                   <Text style={styles.actionBtnText}>Gọi khách</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.completeButton}
-                  onPress={handleCompleteOrder}
-                >
-                  <Text style={styles.actionBtnText}>Xác nhận giao xong</Text>
-                </TouchableOpacity>
+                {currentOrder?.status === "Đang giao hàng" || currentOrder?.status === "delivering" ? (
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={handleCompleteOrder}
+                  >
+                    <Text style={styles.actionBtnText}>Xác nhận giao xong</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.completeButton, { backgroundColor: "#9CA3AF" }]}>
+                    <Text style={styles.actionBtnText}>Chờ quán bàn giao...</Text>
+                  </View>
+                )}
               </View>
 
               {/* Hiển thị số đơn đang chờ trong hàng đợi */}
