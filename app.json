@@ -1,5 +1,6 @@
 {
   "expo": {
+
     "name": "food-app",
     "slug": "food-app",
     "version": "1.0.0",
@@ -8,6 +9,18 @@
     "scheme": "foodapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "name": "FoodApp",
+    "slug": "FoodApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -17,6 +30,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -44,5 +59,11 @@
       "typedRoutes": true,
       "reactCompiler": true
     }
+
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
-}
+

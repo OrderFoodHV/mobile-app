@@ -1,0 +1,26 @@
+[
+  {
+    "id": "8",
+    "name": "Trà đào cam sả",
+    "category": "Đồ uống",
+    "image": "https://i.redd.it/yyr6vtruhzbb1.jpg",
+    "price": "40.000đ",
+    "description": "Trà đào thơm mát kết hợp cam sả."
+  },
+  {
+    "id": "9",
+    "name": "Cà phê sữa đá",
+    "category": "Đồ uống",
+    "image": "https://i.redd.it/yyr6vtruhzbb1.jpg",
+    "price": "25.000đ",
+    "description": "Cà phê phin pha sữa đậm đà, đậm chất Việt."
+  },
+  {
+    "id": "2",
+    "name": "Trà sữa trân châu",
+    "category": "Đồ uống",
+    "image": "https://i.redd.it/yyr6vtruhzbb1.jpg",
+    "price": "45.000đ",
+    "description": "Trà sữa truyền thống với trân châu đen dẻo."
+  }
+]
