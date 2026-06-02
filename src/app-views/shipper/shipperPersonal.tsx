@@ -5,72 +5,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  SafeAreaView,
   StatusBar,
   Image,
-  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useSelector, useDispatch } from "react-redux";
-import { updateAuthInfor, resetAllAuth } from "src/redux/features/authSlice";
-import useCallAPI from "@app-helper/useCallAPI";
-import URL_API from "@app-helper/urlAPI";
-import { RootState } from "src/redux/store";
+import { useSelector } from "react-redux";
 
 const ShipperPersonal: React.FC = () => {
   const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-  const authState = useSelector((state: RootState) => state.auth as any);
-  const user = authState?.account;
-
-  useFocusEffect(
-    React.useCallback(() => {
-      let isMounted = true;
-      const fetchProfile = async () => {
-        const token = authState?.tokenData;
-        if (!token) return;
-        const res = await useCallAPI({
-          method: "GET",
-          url: `${URL_API}/users/me`,
-          token: token,
-          showToast: false,
-        });
-        if (isMounted) {
-          if (res && (res.status === 401 || res.success === false)) {
-            dispatch(resetAllAuth());
-            navigation.replace("Login");
-          } else if (res && res.success !== false) {
-            const profile = res;
-            let vehicleModel = profile.vehicle || "";
-            let licensePlate = "";
-            if (profile.vehicle && profile.vehicle.includes(",")) {
-              const parts = profile.vehicle.split(",");
-              vehicleModel = parts[0].trim();
-              licensePlate = parts[1].trim();
-            }
-            dispatch(
-              updateAuthInfor({
-                is_shipper: profile.is_shipper,
-                is_seller: profile.is_seller,
-                shipperStatus: profile.shipperStatus,
-                storeStatus: profile.storeStatus,
-                phone: profile.phone,
-                user_name: profile.name || profile.user_name,
-                vehicle: vehicleModel,
-                license_plate: licensePlate,
-                shipperPhone: profile.shipperPhone,
-              })
-            );
-          }
-        }
-      };
-      fetchProfile();
-      return () => {
-        isMounted = false;
-      };
-    }, [authState?.tokenData])
-  );
+  const user = useSelector((state: any) => state.auth.account);
 
   // Hàm giả lập bấm vào để đổi ảnh đại diện
   const handleUploadPhoto = () => {
@@ -86,7 +31,7 @@ const ShipperPersonal: React.FC = () => {
 
       <View style={styles.container}>
         <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
         >
           {/* THÔNG TIN TÀI XẾ & PHƯƠNG TIỆN */}
@@ -127,7 +72,7 @@ const ShipperPersonal: React.FC = () => {
                   <Text style={styles.roleBadge}>Đối tác giao hàng</Text>
                   <View style={styles.starWrap}>
                     <Feather name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.starText}> 5.0</Text>
+                    <Text style={styles.starText}> {user?.shipperRating ? parseFloat(user.shipperRating).toFixed(1) : "5.0"} <Text style={{fontWeight: 'normal', color: '#6B7280'}}>({user?.shipperRatingCount || 0} đánh giá)</Text></Text>
                   </View>
                 </View>
               </View>
@@ -139,7 +84,7 @@ const ShipperPersonal: React.FC = () => {
             <View style={styles.detailRow}>
               <Feather name="phone" size={16} color="#6B7280" />
               <Text style={styles.detailText}>
-                {user?.shipperPhone || user?.phone || "0987.654.321"}
+                {user?.phone || "0987.654.321"}
               </Text>
             </View>
             <View style={styles.detailRow}>
@@ -197,40 +142,19 @@ const ShipperPersonal: React.FC = () => {
 
             <TouchableOpacity
               style={[styles.menuItem, { borderBottomWidth: 0 }]}
-              onPress={() => {
-                if (Number(user?.is_seller) === 1) {
-                  navigation.navigate("StoreBottomContainer");
-                } else if (user?.storeStatus === "pending") {
-                  Alert.alert(
-                    "Thông báo",
-                    "Yêu cầu mở cửa hàng của bạn đang chờ Admin phê duyệt. Vui lòng quay lại sau!"
-                  );
-                } else {
-                  Alert.alert(
-                    "Thông báo",
-                    "Bạn chưa là Người bán. Bạn có muốn đăng ký mở cửa hàng?",
-                    [
-                      { text: "Để sau", style: "cancel" },
-                      {
-                        text: "Đăng ký ngay",
-                        onPress: () => navigation.navigate("StoreLanding"),
-                      },
-                    ],
-                  );
-                }
-              }}
+              onPress={() => navigation.navigate("StoreBottomContainer")}
             >
               <View style={styles.menuLeft}>
                 <View
-                  style={[styles.iconCircle, { backgroundColor: "#FFF7ED" }]}
+                  style={[styles.iconCircle, { backgroundColor: "#DBEAFE" }]}
                 >
-                  <Feather name="home" size={20} color="#F97316" />
+                  <Feather name="home" size={20} color="#3B82F6" />
                 </View>
                 <Text style={[styles.menuText, { fontWeight: "bold" }]}>
                   Chuyển sang Cửa hàng
                 </Text>
               </View>
-              <Feather name="chevron-right" size={20} color="#F97316" />
+              <Feather name="chevron-right" size={20} color="#3B82F6" />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -241,7 +165,7 @@ const ShipperPersonal: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#F97316",
+    backgroundColor: "#3498db",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

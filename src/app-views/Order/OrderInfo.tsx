@@ -1,12 +1,10 @@
 import React, { useEffect } from "react";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { useNavigationComponentApp } from "@app-helper/navigateToScreens";
-import { Content, Footer } from "@app-layout/Layout";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Container, Content, Footer } from "@app-layout/Layout";
 import colors from "@assets/colors/global_colors";
 import sizes from "@assets/styles/sizes";
 import { useRoute } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
 import {
   createOrder,
   resetCreateOrderResponse,
@@ -20,8 +18,10 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  StatusBar,
+  ActivityIndicator,
+  Modal,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 
 const OrderInfo: React.FC = () => {
@@ -37,6 +37,16 @@ const OrderInfo: React.FC = () => {
     (state: RootState) => state.auth,
     shallowEqual,
   );
+
+  const calculateTotal = () => {
+    return data?.total_price || 0;
+  };
+
+  const handleSend = () => {
+    if (tokenData && data) {
+      dispatch(createOrder({ data, token: tokenData }));
+    }
+  };
 
   useEffect(() => {
     if (createOrderResponse?.success) {
@@ -79,382 +89,177 @@ const OrderInfo: React.FC = () => {
     }
   }, [createOrderResponse]);
 
-  const subTotal = data?.items?.reduce(
-    (sum: number, item: any) =>
-      sum + Number(item.price || 0) * Number(item.quantity || 0),
-    0,
-  ) || 0;
-
-  const shippingFee = Number(data?.shipping_fee || 0);
-  const serviceFee = Number(data?.service_fee || 0);
-  const finalTotal = Number(data?.total_price || subTotal + shippingFee + serviceFee);
-  const discountAmount = Math.max(0, subTotal + shippingFee + serviceFee - finalTotal);
-
-  const handleSend = () => {
-    if (tokenData && data) {
-      dispatch(createOrder({ data: data, token: tokenData }));
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+    <Container>
       <HeaderCustom
         title={"Thông tin đơn hàng"}
         rightIcon={<View style={{ flex: 1 }}></View>}
       />
       <Content>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hướng dẫn ngắn */}
-          <View style={styles.introCard}>
-            <View style={styles.introIconBg}>
-              <Feather name="shopping-cart" size={20} color={colors.blue_primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.introTitle}>Kiểm tra lại đơn hàng</Text>
-              <Text style={styles.introSub}>Vui lòng soát lại địa chỉ và các món ăn trước khi bấm xác nhận đặt hàng nhen sếp!</Text>
-            </View>
-          </View>
-
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Địa chỉ giao hàng */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBg, { backgroundColor: "#EFF6FF" }]}>
-                <Feather name="map-pin" size={16} color={colors.blue_primary} />
-              </View>
-              <Text style={styles.cardTitle}>Địa chỉ giao hàng</Text>
-            </View>
-            <Text style={styles.addressText}>{data?.address}</Text>
-          </View>
-
-          {/* Phương thức thanh toán */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBg, { backgroundColor: "#F3E8FF" }]}>
-                <Feather name="credit-card" size={16} color="#8B5CF6" />
-              </View>
-              <Text style={styles.cardTitle}>Phương thức thanh toán</Text>
-            </View>
-            <View style={styles.paymentRow}>
-              <Feather 
-                name={
-                  data?.payment_method?.icon === "dollar-sign" ? "dollar-sign" : 
-                  data?.payment_method?.icon === "credit-card" ? "credit-card" : 
-                  "pocket"
-                } 
-                size={16} 
-                color="#8B5CF6" 
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.paymentText}>
-                {data?.payment_method?.label || "Thanh toán khi nhận hàng (COD)"}
-              </Text>
-            </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+            <Text style={styles.text}>{data?.address}</Text>
           </View>
 
           {/* Thông tin sản phẩm */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBg, { backgroundColor: "#ECFDF5" }]}>
-                <Feather name="coffee" size={16} color="#10B981" />
-              </View>
-              <Text style={styles.cardTitle}>Món ăn đã chọn</Text>
-            </View>
-            
-            {data?.items?.map((item: any, index: number) => (
-              <View key={index}>
-                {index > 0 && <View style={styles.itemDivider} />}
-                <View style={styles.productRow}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.productImage}
-                  />
-                  <View style={styles.productDetails}>
-                    <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-                    <View style={styles.productMeta}>
-                      <Text style={styles.productPrice}>
-                        {Number(item.price).toLocaleString()} đ
-                      </Text>
-                      <Text style={styles.productQty}>
-                        x{item.quantity}
-                      </Text>
-                    </View>
-                  </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Thông tin sản phẩm</Text>
+            {data?.items?.map((product: any) => (
+              <View key={product.id} style={styles.productContainer}>
+                <Image
+                  source={{ uri: product?.image }}
+                  style={styles.productImage}
+                />
+                <View style={styles.productDetails}>
+                  <Text style={styles.productName}>{product?.name}</Text>
+                  <Text style={styles.productPrice}>
+                    {product?.price?.toLocaleString()}
+                  </Text>
+                  <Text style={styles.productQuantity}>
+                    Số lượng: {product?.quantity}
+                  </Text>
                 </View>
               </View>
             ))}
           </View>
 
-          {/* Tóm tắt chi phí */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBg, { backgroundColor: "#FFF7ED" }]}>
-                <Feather name="file-text" size={16} color="#F97316" />
+          {/* Phương thức thanh toán */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.paymentBtn, styles.paymentBtnActive]}>
+                {data?.payment_method === 'vnpay' ? (
+                  <>
+                    <Feather name="credit-card" size={16} color={colors.blue_primary} />
+                    <Text style={[styles.paymentText, styles.paymentTextActive]}>VNPay</Text>
+                  </>
+                ) : (
+                  <>
+                    <Feather name="dollar-sign" size={16} color={colors.blue_primary} />
+                    <Text style={[styles.paymentText, styles.paymentTextActive]}>Tiền mặt</Text>
+                  </>
+                )}
               </View>
-              <Text style={styles.cardTitle}>Chi tiết hóa đơn</Text>
             </View>
+          </View>
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryText}>Tạm tính</Text>
-              <Text style={styles.summaryValue}>
-                {subTotal.toLocaleString()} đ
-              </Text>
+          {/* Tổng tiền */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.text}>Tạm tính</Text>
+              <Text style={styles.text}>{data?.total_price?.toLocaleString()}đ</Text>
             </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryText}>Phí vận chuyển</Text>
-              <Text style={styles.summaryValue}>
-                +{shippingFee.toLocaleString()} đ
-              </Text>
-            </View>
-
-            {serviceFee > 0 && (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryText}>Phí dịch vụ</Text>
-                <Text style={styles.summaryValue}>
-                  +{serviceFee.toLocaleString()} đ
-                </Text>
-              </View>
-            )}
-
-            {discountAmount > 0 && (
-              <View style={styles.summaryRow}>
-                <Text style={[styles.summaryText, { color: "#10B981" }]}>Mã giảm giá</Text>
-                <Text style={[styles.summaryValue, { color: "#10B981", fontWeight: "600" }]}>
-                  -{discountAmount.toLocaleString()} đ
-                </Text>
+            {data?.store_voucher_id && (
+              <View style={styles.priceRow}>
+                <Text style={styles.text}>Mã khuyến mãi áp dụng</Text>
+                <Text style={{color: '#10B981'}}>ID: {data.store_voucher_id}</Text>
               </View>
             )}
-
-            <View style={styles.dashedDivider} />
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalText}>Tổng cộng</Text>
-              <Text style={styles.totalValue}>
-                {finalTotal.toLocaleString()} đ
+            <View style={[styles.priceRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderColor: '#eee' }]}>
+              <Text style={styles.sectionTitle}>Tổng tiền</Text>
+              <Text style={styles.totalText}>
+                {calculateTotal()?.toLocaleString()}đ
               </Text>
             </View>
           </View>
         </ScrollView>
+
+
       </Content>
       <Footer>
-        <View style={styles.footerContainer}>
-          <TouchableOpacity style={styles.orderButton} onPress={handleSend} activeOpacity={0.8}>
-            <Text style={styles.orderButtonText}>Xác nhận đặt hàng</Text>
-            <Feather name="check-circle" size={18} color="#fff" style={{ marginLeft: 8 }} />
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.orderButton} onPress={handleSend}>
+            <Text style={styles.orderButtonText}>Xác nhận</Text>
           </TouchableOpacity>
         </View>
       </Footer>
-    </SafeAreaView>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
   scrollContent: {
+    paddingBottom: 80,
+  },
+  section: {
     padding: 16,
-    paddingBottom: 40,
-  },
-  introCard: {
-    flexDirection: "row",
-    backgroundColor: "#EFF6FF",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
-    alignItems: "center",
-  },
-  introIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  introTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1E40AF",
-    marginBottom: 2,
-  },
-  introSub: {
-    fontSize: 12,
-    color: "#1E3A8A",
-    opacity: 0.8,
-    lineHeight: 16,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#F3F4F6",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    paddingBottom: 12,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
+    marginBottom: 8,
   },
-  iconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
   },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  addressText: {
+  text: {
     fontSize: 14,
-    color: "#4B5563",
-    lineHeight: 22,
-    fontWeight: "500",
+    color: "#333",
   },
-  productRow: {
+  productContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    marginBottom: 16,
   },
   productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: 14,
-    backgroundColor: "#F3F4F6",
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 16,
   },
   productDetails: {
     flex: 1,
   },
   productName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 6,
-  },
-  productMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   productPrice: {
-    fontSize: 13,
-    color: "#EF4444",
-    fontWeight: "700",
-  },
-  productQty: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    fontWeight: "600",
-  },
-  itemDivider: {
-    height: 1,
-    backgroundColor: "#F3F4F6",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-  },
-  summaryText: {
     fontSize: 14,
-    color: "#6B7280",
-    fontWeight: "500",
+    color: "#e53935",
   },
-  summaryValue: {
+  productQuantity: {
     fontSize: 14,
-    color: "#1F2937",
-    fontWeight: "600",
-  },
-  dashedDivider: {
-    height: 1,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderStyle: "dashed",
-    marginVertical: 12,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 4,
+    marginTop: 8,
   },
   totalText: {
     fontSize: 16,
-    fontWeight: "800",
-    color: "#1F2937",
+    fontWeight: "bold",
+    color: "#e53935",
   },
-  totalValue: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#EF4444",
-  },
-  footerContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  footer: {
+    marginBottom: 30,
     backgroundColor: "#fff",
+    padding: 16,
     borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    width: "100%",
+    borderColor: "#eee",
   },
   orderButton: {
     backgroundColor: colors.blue_primary,
-    paddingVertical: 14,
-    borderRadius: 28,
+    paddingVertical: 16,
+    borderRadius: 8,
     alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    shadowColor: colors.blue_primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
   },
   orderButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "bold",
   },
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F3F4F6",
-  },
-  paymentText: {
-    fontSize: 14,
-    color: "#1F2937",
-    fontWeight: "600",
-  },
+  paymentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, gap: 6 },
+  paymentBtnActive: { borderColor: colors.blue_primary, backgroundColor: '#EFF6FF' },
+  paymentText: { color: '#6B7280', fontWeight: '500' },
+  paymentTextActive: { color: colors.blue_primary, fontWeight: 'bold' },
+  voucherSelect: { flexDirection: 'row', alignItems: 'center', padding: 12, borderWidth: 1, borderColor: '#F59E0B', borderRadius: 8, backgroundColor: '#FEF3C7' },
+  voucherText: { flex: 1, marginLeft: 10, color: '#D97706', fontWeight: '500' },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold' },
+  voucherCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, marginBottom: 10 }
 });
 
 export default OrderInfo;

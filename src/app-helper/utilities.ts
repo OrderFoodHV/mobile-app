@@ -27,7 +27,14 @@ export const formatCurrencyToNumber = (value: string | number | undefined | null
   if (!value) return 0; // nếu null/undefined
   if (typeof value === "number") return value;
   if (typeof value === "string") {
-    return Number(value.replace(/[^\d]/g, "")) || 0;
+    if (!isNaN(Number(value))) {
+      return Math.round(Number(value)) || 0;
+    }
+    let cleanVal = value;
+    if (cleanVal.includes(".") && cleanVal.endsWith(".00")) {
+      cleanVal = cleanVal.slice(0, -3);
+    }
+    return Number(cleanVal.replace(/[^\d]/g, "")) || 0;
   }
   return 0;
 };

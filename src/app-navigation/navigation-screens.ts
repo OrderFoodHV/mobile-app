@@ -28,6 +28,10 @@ const UserScreens = {
     name: "OrderDetail",
     component: require("@app-views/Order/OrderDetail").default,
   },
+  VNPayWebView: {
+    name: "VNPayWebView",
+    component: require("@app-views/Order/VNPayWebView").default,
+  },
   OrderInfo: {
     name: "OrderInfo",
     component: require("@app-views/Order/OrderInfo").default,

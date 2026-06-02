@@ -63,6 +63,10 @@ const ShipperHome = () => {
                 storeStatus: profile.storeStatus,
                 phone: profile.phone,
                 user_name: profile.name || profile.user_name,
+                shipperRating: profile.shipperRating,
+                shipperRatingCount: profile.shipperRatingCount,
+                storeRating: profile.storeRating,
+                storeRatingCount: profile.storeRatingCount,
               })
             );
           
@@ -432,7 +436,7 @@ const ShipperHome = () => {
 
   // Render từng card đơn hàng trong hàng đợi
   const renderOrderQueueCard = ({ item, index }: { item: any; index: number }) => (
-    <View style={styles.newOrderCard}>
+    <View style={styles.newOrderCard} key={item.orderId || index}>
       <View style={styles.orderHeader}>
         <View style={styles.badgeNew}>
           <Text style={styles.badgeText}>🔔 ĐƠN #{item.orderId}</Text>

@@ -18,10 +18,14 @@ import {
   RefreshControl,
   StyleSheet,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import { useAppTheme } from "src/app-context/ThemeContext";
+import useCallAPI from "@app-helper/useCallAPI";
+import URL_API from "@app-helper/urlAPI";
+import showToastApp from "@app-components/CustomToast/ShowToastApp";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ xác nhận",
@@ -84,6 +88,8 @@ const OrderList: React.FC = () => {
     }
     setRefreshing(false);
   };
+
+  const [reorderLoadingId, setReorderLoadingId] = useState<number | null>(null);
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -153,7 +159,40 @@ const OrderList: React.FC = () => {
 
       {/* Footer Button */}
       <View style={styles.cardFooter}>
-        <Text style={styles.detailButton}>Xem chi tiết</Text>
+        <TouchableOpacity style={styles.detailButton} onPress={() => goToOrderDetail({ data: item })}>
+          <Text style={styles.detailButtonText}>Xem chi tiết</Text>
+        </TouchableOpacity>
+        {(item.status === "completed" || item.status === "cancelled" || item.order_status === "completed" || item.order_status === "cancelled") && (
+          <TouchableOpacity 
+            style={[styles.detailButton, { backgroundColor: "#F97316", marginLeft: 10 }]} 
+            onPress={async () => {
+              if (reorderLoadingId) return;
+              setReorderLoadingId(item.id);
+              try {
+                const res = await useCallAPI({
+                  method: "POST",
+                  url: `${URL_API}/orders/${item.id}/reorder`,
+                  token: tokenData,
+                });
+                if (res && res.products) {
+                  navigation.navigate("Order", { products: res.products, type: "food" });
+                }
+              } catch (e) {
+                console.log(e);
+                showToastApp({ text: "Lỗi khi lấy thông tin đơn hàng cũ!", type: "error" });
+              } finally {
+                setReorderLoadingId(null);
+              }
+            }}
+            disabled={reorderLoadingId !== null}
+          >
+            {reorderLoadingId === item.id ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.detailButtonText}>Đặt lại</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -237,14 +276,16 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 14, color: "#555" },
   value: { fontSize: 14, color: "#333", fontWeight: "500" },
-  cardFooter: { marginTop: 12, alignItems: "center" },
+  cardFooter: { marginTop: 12, flexDirection: "row", justifyContent: "flex-end" },
   detailButton: {
     backgroundColor: colors.blue_primary,
-    color: "#fff",
-    fontWeight: "600",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 12,
+  },
+  detailButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
 

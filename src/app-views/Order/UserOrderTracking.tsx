@@ -14,6 +14,7 @@ import { useSelector } from "react-redux";
 import socket from "../../app-helper/socketHelper";
 import useCallAPI from "../../app-helper/useCallAPI";
 import URL_API from "../../app-helper/urlAPI";
+import ReviewOrderModal from "./ReviewOrderModal";
 
 const UserOrderTracking = ({ route, navigation }: any) => {
   // Lấy ID đơn hàng vừa đặt từ route.params truyền sang
@@ -24,6 +25,8 @@ const UserOrderTracking = ({ route, navigation }: any) => {
   const [orderStatus, setOrderStatus] = useState("pending");
   const [driverInfo, setDriverInfo] = useState<any>(null);
   const [deliveryPhoto, setDeliveryPhoto] = useState<string | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [existingReview, setExistingReview] = useState<any>(null);
 
   // Fetch initial status from backend on mount
   useEffect(() => {
@@ -39,6 +42,7 @@ const UserOrderTracking = ({ route, navigation }: any) => {
         const orderInfo = res?.data?.order_info || res?.order_info;
         if (orderInfo) {
           setDeliveryPhoto(orderInfo.delivery_photo || null);
+          setExistingReview(orderInfo.review || null);
           const dbStatus = orderInfo.status;
           if (dbStatus === "Quán đã nhận đơn") {
             setOrderStatus("preparing");
@@ -218,9 +222,14 @@ const UserOrderTracking = ({ route, navigation }: any) => {
               >
                 <Text style={styles.rateText}>Khiếu nại chưa nhận</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.rateBtn, { backgroundColor: "#F59E0B", flex: 1, marginTop: 0 }]}>
-                <Text style={styles.rateText}>Đánh giá đơn</Text>
-              </TouchableOpacity>
+              {!existingReview && (
+                <TouchableOpacity 
+                  style={[styles.rateBtn, { backgroundColor: "#F59E0B", flex: 1, marginTop: 0 }]}
+                  onPress={() => setShowReviewModal(true)}
+                >
+                  <Text style={styles.rateText}>Đánh giá đơn</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         );
@@ -253,6 +262,18 @@ const UserOrderTracking = ({ route, navigation }: any) => {
 
       {/* Khối trạng thái */}
       <View style={styles.bottomSheet}>{renderStatusUI()}</View>
+      {showReviewModal && (
+        <ReviewOrderModal
+          visible={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          orderId={orderId}
+          tokenData={token}
+          onSuccess={() => {
+            // Có thể reload data
+          }}
+          existingReview={existingReview}
+        />
+      )}
     </SafeAreaView>
   );
 };

@@ -18,6 +18,7 @@ import StoreOrders from "../StoreOrders";
 import StoreDashboard from "../StoreDashboard";
 import StoreProducts from "../StoreProducts";
 import StorePersonal from "../app-views/Personal/StorePersonal";
+import StoreNotifications from "../StoreNotifications";
 
 const Tab = createBottomTabNavigator();
 
@@ -158,6 +159,16 @@ export default function StoreBottomContainer() {
           tabBarLabel: "Thực đơn",
           tabBarIcon: ({ color }) => (
             <Feather name="list" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="StoreNotificationTab"
+        component={StoreNotifications}
+        options={{
+          tabBarLabel: "Thông báo",
+          tabBarIcon: ({ color }) => (
+            <Feather name="bell" size={22} color={color} />
           ),
         }}
       />

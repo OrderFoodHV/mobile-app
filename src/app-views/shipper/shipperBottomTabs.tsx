@@ -5,8 +5,8 @@ import { Feather } from "@expo/vector-icons";
 // 🌟 Import các màn hình chuẩn
 import shipperHome from "src/app-views/shipper/shipperHome";
 import shipperWallet from "src/app-views/shipper/shipperWallet";
-// Sửa lại đường dẫn import này cho khớp với thư mục của bạn nếu cần nhé
 import shipperPersonal from "src/app-views/shipper/shipperPersonal";
+import shipperNotifications from "src/app-views/shipper/shipperNotifications";
 
 const Tab = createBottomTabNavigator();
 
@@ -32,6 +32,16 @@ export default function ShipperBottomTabs() {
           tabBarLabel: "Thu nhập",
           tabBarIcon: ({ color }) => (
             <Feather name="pie-chart" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ShipperNotificationTab"
+        component={shipperNotifications}
+        options={{
+          tabBarLabel: "Thông báo",
+          tabBarIcon: ({ color }) => (
+            <Feather name="bell" size={24} color={color} />
           ),
         }}
       />

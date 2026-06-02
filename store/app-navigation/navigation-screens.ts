@@ -35,6 +35,10 @@ export const ListStoreScreens: Record<string, any> = {
     name: "StoreSettings",
     component: require("store/StoreSettings").default,
   },
+  StoreStats: {
+    name: "StoreStats",
+    component: require("store/StoreStats").default,
+  },
   ShipperSettings: {
     name: "ShipperSettings",
     // Chú ý: Trỏ đường dẫn tới file ShipperSettings.tsx bạn vừa tạo nhé

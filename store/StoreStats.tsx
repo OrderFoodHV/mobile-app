@@ -9,38 +9,28 @@ import {
   FlatList,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import colors from "../src/assets/colors/global_colors";
 import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
 import { useSelector } from "react-redux";
+import StoreOrdersModal from "./StoreOrdersModal";
 
 const StoreStats = () => {
+  const user = useSelector((state: any) => state.auth.account);
   const token = useSelector((state: any) => state.auth.tokenData);
-  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
-  const [currentSubTab, setCurrentSubTab] = useState("dashboard"); // "dashboard" | "vouchers"
+  const storeId = user?.storeId || 1;
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
-    revenue: 0,
-    total: 0,
-    success: 0,
-    cancelled: 0,
+    total_orders: 0,
+    successful_orders: 0,
+    cancelled_orders: 0,
+    total_revenue: 0,
   });
-  const [vouchers, setVouchers] = useState([
-    {
-      code: "INORDERNEW",
-      discount: 15000,
-      desc: "Giảm 15k cho đơn hàng mới",
-      active: 1,
-    },
-    {
-      code: "ANSANG",
-      discount: 10000,
-      desc: "Ưu đãi ăn sáng đồng giá",
-      active: 0,
-    },
-  ]);
+
+  // Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalStatus, setModalStatus] = useState<"all" | "completed" | "cancelled">("all");
 
   const fetchStoreDashboardData = async () => {
     setLoading(true);
@@ -51,12 +41,9 @@ const StoreStats = () => {
         url: `${URL_API}/store/${storeId}/dashboard-summary`,
         token: token,
       });
-      if (res) {
-        const actualSummary = res.data || res;
+      if (res && !res.error) {
         setSummary(
-          actualSummary && actualSummary.revenue !== undefined
-            ? actualSummary
-            : { revenue: 0, total: 0, success: 0, cancelled: 0 }
+          res.data || res,
         );
       }
     } catch (e) {
@@ -67,46 +54,13 @@ const StoreStats = () => {
   };
 
   useEffect(() => {
-    if (currentSubTab === "dashboard") fetchStoreDashboardData();
-  }, [currentSubTab, storeId, token]);
+    fetchStoreDashboardData();
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* THANH MENU CHUYỂN MODULE KÊNH NGƯỜI BÁN */}
-      <View style={styles.topMenu}>
-        <TouchableOpacity
-          style={[
-            styles.menuItem,
-            currentSubTab === "dashboard" && styles.menuActive,
-          ]}
-          onPress={() => setCurrentSubTab("dashboard")}
-        >
-          <Text
-            style={[
-              styles.menuText,
-              currentSubTab === "dashboard" && styles.menuTextActive,
-            ]}
-          >
-            Báo Cáo Doanh Thu
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.menuItem,
-            currentSubTab === "vouchers" && styles.menuActive,
-          ]}
-          onPress={() => setCurrentSubTab("vouchers")}
-        >
-          <Text
-            style={[
-              styles.menuText,
-              currentSubTab === "vouchers" && styles.menuTextActive,
-            ]}
-          >
-            Mã Khuyến Mãi
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      {/* THANH TIÊU ĐỀ */}
+
 
       {loading ? (
         <ActivityIndicator
@@ -115,9 +69,8 @@ const StoreStats = () => {
           style={{ marginTop: 40 }}
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
           {/* TAB 1: THIẾT KẾ ĐÚNG 4 Ô THÔNG SỐ CHÍNH ĐỐI SOÁT KINH DOANH TRỰC QUAN */}
-          {currentSubTab === "dashboard" && (
             <View>
               <Text style={styles.titleText}>Kết quả kinh doanh tháng này</Text>
 
@@ -132,12 +85,12 @@ const StoreStats = () => {
                   <Feather name="dollar-sign" size={20} color="#10B981" />
                   <Text style={styles.cardLabel}>Doanh thu thuần</Text>
                   <Text style={styles.cardValue}>
-                    {Number(summary.revenue || 0).toLocaleString()}đ
+                    {Number(summary.total_revenue || 0).toLocaleString()}đ
                   </Text>
                 </View>
 
                 {/* Ô 2: TỔNG ĐƠN ĐÃ NHẬN */}
-                <View
+                <TouchableOpacity
                   style={[
                     styles.gridCard,
                     {
@@ -145,6 +98,7 @@ const StoreStats = () => {
                       borderLeftWidth: 4,
                     },
                   ]}
+                  onPress={() => { setModalStatus("all"); setModalVisible(true); }}
                 >
                   <Feather
                     name="shopping-cart"
@@ -152,96 +106,51 @@ const StoreStats = () => {
                     color={colors.blue_primary}
                   />
                   <Text style={styles.cardLabel}>Tổng đơn đã nhận</Text>
-                  <Text style={styles.cardValue}>{summary.total || 0} đơn</Text>
-                </View>
+                  <Text style={styles.cardValue}>{summary.total_orders || 0} đơn</Text>
+                </TouchableOpacity>
 
                 {/* Ô 3: ĐƠN GIAO THÀNH CÔNG */}
-                <View
+                <TouchableOpacity
                   style={[
                     styles.gridCard,
                     { borderLeftColor: "#3B82F6", borderLeftWidth: 4 },
                   ]}
+                  onPress={() => { setModalStatus("completed"); setModalVisible(true); }}
                 >
                   <Feather name="check-circle" size={20} color="#3B82F6" />
                   <Text style={styles.cardLabel}>Giao thành công</Text>
                   <Text style={styles.cardValue}>
-                    {summary.success || 0} đơn
+                    {summary.successful_orders || 0} đơn
                   </Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Ô 4: ĐƠN BỊ HỦY */}
-                <View
+                <TouchableOpacity
                   style={[
                     styles.gridCard,
                     { borderLeftColor: "#EF4444", borderLeftWidth: 4 },
                   ]}
+                  onPress={() => { setModalStatus("cancelled"); setModalVisible(true); }}
                 >
                   <Feather name="x-circle" size={20} color="#EF4444" />
                   <Text style={styles.cardLabel}>Đơn hàng đã hủy</Text>
                   <Text style={styles.cardValue}>
-                    {summary.cancelled || 0} đơn
+                    {summary.cancelled_orders || 0} đơn
                   </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* TAB 2: QUẢN LÝ KÍCH HOẠT / TẮT VOUCHER KHUYẾN MÃI THỜI GIAN THỰC */}
-          {currentSubTab === "vouchers" && (
-            <View>
-              <View style={styles.voucherHeaderRow}>
-                <Text style={styles.titleText}>Khuyến mãi của cửa hàng</Text>
-                <TouchableOpacity
-                  style={styles.addVoucherBtn}
-                  onPress={() =>
-                    Alert.alert("Tính năng", "Mở Form tạo mã Voucher mới!")
-                  }
-                >
-                  <Text style={styles.addText}>+ Tạo mã</Text>
                 </TouchableOpacity>
               </View>
 
-              {vouchers.map((item, idx) => (
-                <View key={idx} style={styles.vCard}>
-                  <MaterialCommunityIcons
-                    name="ticket-percent"
-                    size={32}
-                    color={item.active ? colors.blue_primary : "#9CA3AF"}
-                  />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.vCode}>{item.code}</Text>
-                    <Text style={styles.vDesc}>{item.desc}</Text>
-                  </View>
-
-                  {/* Nút bật tắt kích hoạt trạng thái voucher */}
-                  <TouchableOpacity
-                    style={[
-                      styles.statusToggleBtn,
-                      { backgroundColor: item.active ? "#D1FAE5" : "#F3F4F6" },
-                    ]}
-                    onPress={() => {
-                      const updated = [...vouchers];
-                      updated[idx].active = updated[idx].active ? 0 : 1;
-                      setVouchers(updated);
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: item.active ? "#065F46" : "#4B5563",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {item.active ? "Đang chạy" : "Tạm dừng"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+              <StoreOrdersModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                storeId={storeId}
+                token={token}
+                statusType={modalStatus}
+              />
             </View>
-          )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

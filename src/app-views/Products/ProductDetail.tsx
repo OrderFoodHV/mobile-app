@@ -116,6 +116,43 @@ const ProductDetail: React.FC = () => {
     }
   }, [tokenData, dispatch]);
 
+  const [storeReviews, setStoreReviews] = React.useState<any[]>([]);
+  const [productReviews, setProductReviews] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchReviews = async () => {
+      if (fullProduct.store_id) {
+        try {
+          const res = await useCallAPI({
+            method: "GET",
+            url: `${URL_API}/reviews/store/${fullProduct.store_id}`,
+            showToast: false,
+          });
+          if (res && res.data) {
+            setStoreReviews(res.data);
+          }
+        } catch (e) {
+          console.log("Error fetching store reviews:", e);
+        }
+      }
+      if (fullProduct.id) {
+        try {
+          const res = await useCallAPI({
+            method: "GET",
+            url: `${URL_API}/reviews/product/${fullProduct.id}`,
+            showToast: false,
+          });
+          if (res && res.data) {
+            setProductReviews(res.data);
+          }
+        } catch (e) {
+          console.log("Error fetching product reviews:", e);
+        }
+      }
+    };
+    fetchReviews();
+  }, [fullProduct.id, fullProduct.store_id]);
+
 
 
   const performAddCart = () => {
@@ -268,6 +305,102 @@ const ProductDetail: React.FC = () => {
             <View style={styles.storeAddressRow}>
               <Feather name="map-pin" size={14} color="#6B7280" style={{ marginRight: 6, marginTop: 2 }} />
               <Text style={styles.storeAddress}>{fullProduct.store_address}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* 🌟 PHẦN REVIEW & ĐÁNH GIÁ CỦA MÓN ĂN & CỬA HÀNG */}
+        <View style={styles.reviewSection}>
+          <Text style={styles.sectionHeader}>Đánh giá & Nhận xét</Text>
+
+          {/* Tab Món ăn */}
+          <View style={styles.tabHeader}>
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabTitle}>Món ăn ({productReviews.length})</Text>
+            </View>
+          </View>
+
+          {productReviews.length === 0 ? (
+            <View style={styles.emptyReviewCard}>
+              <Text style={styles.emptyReviewText}>Món này chưa có đánh giá nào. Bạn sẽ là người đầu tiên chứ?</Text>
+            </View>
+          ) : (
+            <View style={styles.reviewList}>
+              {productReviews.slice(0, 3).map((rev) => (
+                <View key={rev.id} style={styles.reviewCard}>
+                  <View style={styles.reviewUserRow}>
+                    <Text style={styles.reviewUser}>{rev.user_name || "Khách hàng ẩn danh"}</Text>
+                    <View style={styles.starsRow}>
+                      {[...Array(5)].map((_, i) => (
+                        <Ionicons
+                          key={i}
+                          name={i < Number(rev.rating) ? "star" : "star-outline"}
+                          size={14}
+                          color="#FBBF24"
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={styles.reviewComment}>{rev.comment || "Đánh giá 5 sao!"}</Text>
+                  <Text style={styles.reviewDate}>
+                    {rev.created_at ? new Date(rev.created_at).toLocaleDateString("vi-VN") : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Tab Shop/Shipper */}
+          <View style={[styles.tabHeader, { marginTop: 14 }]}>
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabTitle}>Nhà hàng & Tài xế ({storeReviews.length})</Text>
+            </View>
+          </View>
+
+          {storeReviews.length === 0 ? (
+            <View style={styles.emptyReviewCard}>
+              <Text style={styles.emptyReviewText}>Nhà hàng chưa nhận được nhận xét nào từ khách hàng.</Text>
+            </View>
+          ) : (
+            <View style={styles.reviewList}>
+              {storeReviews.slice(0, 3).map((rev) => (
+                <View key={rev.id} style={styles.reviewCard}>
+                  <View style={styles.reviewUserRow}>
+                    <Text style={styles.reviewUser}>{rev.user_name || "Người dùng ẩn danh"}</Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {rev.store_rating && (
+                        <View style={styles.ratingBadge}>
+                          <Feather name="home" size={10} color="#D97706" />
+                          <Text style={styles.ratingBadgeText}>{rev.store_rating} ⭐</Text>
+                        </View>
+                      )}
+                      {rev.shipper_rating && (
+                        <View style={[styles.ratingBadge, { backgroundColor: "#ECFDF5" }]}>
+                          <Feather name="truck" size={10} color="#059669" />
+                          <Text style={[styles.ratingBadgeText, { color: "#059669" }]}>{rev.shipper_rating} ⭐</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {rev.store_comment && (
+                    <Text style={styles.reviewComment}>
+                      <Text style={{ fontWeight: "600", color: "#374151" }}>Quán: </Text>
+                      {rev.store_comment}
+                    </Text>
+                  )}
+                  {rev.shipper_comment && (
+                    <Text style={[styles.reviewComment, { marginTop: 2 }]}>
+                      <Text style={{ fontWeight: "600", color: "#374151" }}>Tài xế: </Text>
+                      {rev.shipper_comment}
+                    </Text>
+                  )}
+                  
+                  <Text style={styles.reviewDate}>
+                    {rev.created_at ? new Date(rev.created_at).toLocaleDateString("vi-VN") : ""}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -566,5 +699,96 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.blue_primary,
     fontWeight: "600",
+  },
+  reviewSection: {
+    marginHorizontal: 14,
+    marginTop: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  tabHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  tabBadge: {
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  tabTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.blue_primary,
+  },
+  emptyReviewCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  emptyReviewText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontStyle: "italic",
+  },
+  reviewList: {
+    gap: 10,
+    marginTop: 6,
+  },
+  reviewCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  reviewUserRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  reviewUser: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  starsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reviewComment: {
+    fontSize: 12,
+    color: "#4B5563",
+    lineHeight: 16,
+  },
+  reviewDate: {
+    fontSize: 10,
+    color: "#9CA3AF",
+    marginTop: 6,
+    textAlign: "right",
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFBEB",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  ratingBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#D97706",
   },
 });

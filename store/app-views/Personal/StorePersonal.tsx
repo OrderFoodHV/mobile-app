@@ -59,6 +59,10 @@ const StorePersonal: React.FC = () => {
           vehicle: vehicleModel,
           license_plate: licensePlate,
           shipperPhone: profile.shipperPhone,
+          storeRating: profile.storeRating,
+          storeRatingCount: profile.storeRatingCount,
+          shipperRating: profile.shipperRating,
+          shipperRatingCount: profile.shipperRatingCount,
         })
       );
       currentIsShipper = Number(profile.is_shipper) === 1;
@@ -105,6 +109,14 @@ const StorePersonal: React.FC = () => {
                   {user?.storeName || user?.name || "Cửa hàng InOrder"}
                 </Text>
                 <Text style={styles.roleBadge}>Đối tác Nhà hàng</Text>
+                
+                {/* ĐÁNH GIÁ SAO CHO SHOP */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: '#F97316', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' }}>
+                  <Ionicons name="star" size={14} color="#FFF" />
+                  <Text style={{ color: '#fff', fontSize: 13, marginLeft: 4, fontWeight: 'bold' }}>
+                    {user?.storeRating ? parseFloat(user.storeRating).toFixed(1) : "5.0"} <Text style={{ fontWeight: 'normal' }}>({user?.storeRatingCount || 0} đánh giá)</Text>
+                  </Text>
+                </View>
               </View>
             </View>
 

@@ -22,7 +22,11 @@ import { formatCurrencyToNumber } from "@app-helper/utilities";
 import showToastApp from "@app-components/CustomToast/ShowToastApp";
 import AppImage from "@app-uikits/AppImage";
 import React from "react";
-import { useSelector } from "react-redux";
+import * as WebBrowser from "expo-web-browser";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@redux/store";
+import { createOrder, resetCreateOrderResponse, resetOrderListData } from "@redux/features/orderSlice";
+import { Linking } from "react-native";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
 
@@ -33,6 +37,11 @@ const Order: React.FC = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const token = useSelector((state: any) => state.auth.tokenData);
+  const dispatch = useDispatch<AppDispatch>();
+  const { createOrderResponse } = useSelector(
+    (state: RootState) => state.order,
+    shallowEqual,
+  );
   const { products, type, note } = route.params ?? { products: [] };
   const [addressList, setAddressList] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -42,7 +51,7 @@ const Order: React.FC = () => {
     value: "COD",
   });
   const [orderNote, setOrderNote] = useState<string>(note || "");
-  const { goToOrderInfo } = useNavigationComponentApp();
+  const { goToOrderDetail } = useNavigationComponentApp();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -134,15 +143,29 @@ const Order: React.FC = () => {
     return parseFloat((distance * 1.3).toFixed(1)); // Nhân hệ số 1.3 ước lượng đường bộ
   };
 
-  const availableVouchers = [
-    {
-      id: 1,
-      code: "DAN_KY_THUAT",
-      discount: 20000,
-      label: "Giảm 20k cho dân HUCE 🛠️",
-    },
-    { id: 2, code: "INORDER10", discount: 10000, label: "Giảm 10k tri ân" },
-  ];
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
+  const [systemVoucherCode, setSystemVoucherCode] = useState("");
+
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      const storeId = products[0]?.store_id || 1;
+      try {
+        const res = await useCallAPI({
+          method: "GET",
+          url: `${URL_API}/store/${storeId}/vouchers`,
+          token: token,
+          showToast: false,
+        });
+        const actualVouchers = res?.data || res;
+        if (Array.isArray(actualVouchers)) {
+          setAvailableVouchers(actualVouchers.filter((v: any) => v.status === 'active'));
+        }
+      } catch (err) {
+        console.log("Lỗi tải voucher:", err);
+      }
+    };
+    fetchVouchers();
+  }, [products]);
 
   const [quantities, setQuantities] = useState<{ [key: number]: number }>(
     products?.reduce((acc: any, p: any) => {
@@ -211,7 +234,18 @@ const Order: React.FC = () => {
     }
   }
 
-  const discountAmount = selectedVoucher ? selectedVoucher.discount : 0;
+  let discountAmount = 0;
+  if (selectedVoucher) {
+    if (selectedVoucher.discount_type === 'percent') {
+      discountAmount = (subTotalPrice * selectedVoucher.discount_value) / 100;
+      if (selectedVoucher.max_discount) {
+        discountAmount = Math.min(discountAmount, selectedVoucher.max_discount);
+      }
+    } else {
+      discountAmount = Number(selectedVoucher.discount_value || selectedVoucher.discount);
+    }
+  }
+
   const finalTotalPrice = subTotalPrice + shippingFee + serviceFee - discountAmount;
 
   const handlePlaceOrder = () => {
@@ -248,13 +282,65 @@ const Order: React.FC = () => {
       note: orderNote,
     };
 
-    goToOrderInfo({ data });
+    if (token) {
+      dispatch(createOrder({ data, token }));
+    }
   };
+
+  useEffect(() => {
+    if (createOrderResponse?.success) {
+      dispatch(resetOrderListData());
+      const resData = createOrderResponse?.result || createOrderResponse?.data || {};
+
+      if (resData.payment_url) {
+        navigation.navigate("VNPayWebView", {
+          url: resData.payment_url,
+          orderId: resData?.order_id || resData?.id
+        });
+        dispatch(resetCreateOrderResponse());
+        return;
+      }
+
+      const rawId = resData?.order_id || resData?.id;
+      const validId = rawId?.insertId || rawId?.id || (Array.isArray(rawId) ? rawId[0] : rawId) || "Đang cập nhật";
+
+      const fallbackTotal = products?.reduce(
+        (sum: number, item: any) =>
+          sum + Number(item.price || 0) * (quantities[getProductKey(item)] ?? 1),
+        0,
+      );
+
+      const orderDataForDetail = {
+        total_price: resData?.total_price || formatCurrencyToNumber(finalTotalPrice) || fallbackTotal,
+        shipping_fee: shippingFee,
+        service_fee: serviceFee,
+        distance: distance,
+        voucher_code: selectedVoucher?.code || null,
+        order_status: "pending",
+        payment_method: paymentMethod,
+        address: addressList.find(item => item.id.toString() === selectedAddressId)?.detail,
+        items: products?.map((p: any) => ({
+          ...p,
+          quantity: quantities[getProductKey(p)] ?? 1,
+          total_price: formatCurrencyToNumber(p.price) * (quantities[getProductKey(p)] ?? 1),
+          product_id: Number(p.product_id ?? p.id),
+        })),
+        note: orderNote,
+        ...resData,
+        id: validId,
+        order_id: validId,
+        created_at: new Date().toISOString(),
+        trigger: true,
+      };
+
+      goToOrderDetail({ data: orderDataForDetail });
+      dispatch(resetCreateOrderResponse());
+    }
+  }, [createOrderResponse]);
 
   const paymentMethods = [
     { label: "Thanh toán khi nhận hàng (COD)", value: "COD", icon: "dollar-sign" },
-    { label: "Chuyển khoản ngân hàng", value: "BankTransfer", icon: "credit-card" },
-    { label: "Ví điện tử", value: "pocket", icon: "pocket" },
+    { label: "Ví VNPay", value: "vnpay", icon: "credit-card" },
   ];
 
   return (
@@ -386,16 +472,30 @@ const Order: React.FC = () => {
               <Feather name="tag" size={18} color="#F59E0B" style={{ marginRight: 8 }} />
               <Text style={styles.cardTitle}>Mã giảm giá</Text>
             </View>
+            <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+              <TextInput
+                style={{ flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 10, marginRight: 8 }}
+                placeholder="Nhập mã hệ thống..."
+                value={systemVoucherCode}
+                onChangeText={setSystemVoucherCode}
+              />
+              <TouchableOpacity style={{ backgroundColor: colors.blue_primary, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Áp dụng</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.voucherContainer}>
               {availableVouchers.map((v) => {
                 const isSelected = selectedVoucher?.id === v.id;
+                const isDisabled = subTotalPrice < v.min_order_amount;
                 return (
                   <TouchableOpacity
                     key={v.id}
                     style={[
                       styles.voucherTicket,
                       isSelected && styles.voucherSelected,
+                      isDisabled && { opacity: 0.5 }
                     ]}
+                    disabled={isDisabled}
                     onPress={() => setSelectedVoucher(isSelected ? null : v)}
                     activeOpacity={0.8}
                   >
@@ -407,7 +507,7 @@ const Order: React.FC = () => {
                         {v.code}
                       </Text>
                       <Text style={[styles.voucherLabel, isSelected && { color: "rgba(255,255,255,0.8)" }]}>
-                        {v.label}
+                        Giảm {v.discount_type === 'percent' ? v.discount_value + '%' : (v.discount_value / 1000) + 'k'} (Đơn từ {v.min_order_amount / 1000}k)
                       </Text>
                     </View>
                     {isSelected && (

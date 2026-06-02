@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,25 +7,28 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
   StatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import colors from "../src/assets/colors/global_colors";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useSelector, shallowEqual } from "react-redux";
+import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import { RootState } from "../src/redux/store";
 import useCallAPI from "../src/app-helper/useCallAPI";
 import URL_API from "../src/app-helper/urlAPI";
+import { updateAuthInfor } from "../src/redux/features/authSlice";
 
 const StoreDashboard = () => {
   const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
   const { tokenData } = useSelector(
     (state: RootState) => state.auth,
     shallowEqual,
   );
 
-  const storeId = useSelector((state: any) => state.auth.account?.storeId) || 1;
+  const user = useSelector((state: RootState) => (state.auth as any).account);
+  const [storeId, setStoreId] = useState<number>(user?.storeId || 1);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
@@ -44,9 +47,8 @@ const StoreDashboard = () => {
         url: `${URL_API}/store/${storeId}/status`,
         token: tokenData,
       });
-      if (statusRes) {
-        const actualStatus = statusRes.data !== undefined ? statusRes.data : statusRes;
-        setIsOpen(actualStatus?.is_open === 1);
+      if (statusRes && !statusRes.error) {
+        setIsOpen(statusRes.is_open === 1 || statusRes.data?.is_open === 1);
       }
 
       const revenueRes = await useCallAPI({
@@ -54,9 +56,8 @@ const StoreDashboard = () => {
         url: `${URL_API}/store/${storeId}/revenue/summary?period=day`,
         token: tokenData,
       });
-      if (revenueRes) {
-        const actualRevenue = revenueRes.data !== undefined ? revenueRes.data : revenueRes;
-        setSummary(actualRevenue);
+      if (revenueRes && !revenueRes.error) {
+        setSummary(revenueRes.data || revenueRes);
       }
     } catch (error) {
       console.log("Lỗi lấy data Dashboard:", error);
@@ -68,6 +69,52 @@ const StoreDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [tokenData, storeId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      const fetchLatestProfile = async () => {
+        if (!tokenData) return;
+        try {
+          const res = await useCallAPI({
+            method: "GET",
+            url: `${URL_API}/users/me`,
+            token: tokenData,
+            showToast: false,
+          });
+          if (isMounted && res && res.success !== false) {
+            dispatch(
+              updateAuthInfor({
+                is_shipper: res.is_shipper,
+                is_seller: res.is_seller,
+                shipperStatus: res.shipperStatus,
+                storeStatus: res.storeStatus,
+                phone: res.phone,
+                user_name: res.name || res.user_name,
+                shipperRating: res.shipperRating,
+                shipperRatingCount: res.shipperRatingCount,
+                storeRating: res.storeRating,
+                storeRatingCount: res.storeRatingCount,
+                storeId: res.storeId,
+                storeName: res.storeName,
+                storeAddress: res.storeAddress,
+                storePhone: res.storePhone,
+              })
+            );
+            if (res.storeId) {
+              setStoreId(res.storeId);
+            }
+          }
+        } catch (e) {
+          console.log("Lỗi tải thông tin cá nhân của quán:", e);
+        }
+      };
+      fetchLatestProfile();
+      return () => {
+        isMounted = false;
+      };
+    }, [tokenData])
+  );
 
   const toggleStoreStatus = async () => {
     setIsOpen((prev) => !prev);
@@ -89,7 +136,18 @@ const StoreDashboard = () => {
 
       {/* 🌟 HEADER CHUẨN DESIGN: Chữ to, căn trái, nền xanh */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tổng quan</Text>
+        <View>
+          <Text style={styles.headerTitle}>{user?.storeName || "Cửa hàng"}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+            <Feather name="star" size={14} color="#FBBF24" />
+            <Text style={{ color: "#ffffff", marginLeft: 4, fontSize: 13, fontWeight: "600" }}>
+              {user?.storeRating ? parseFloat(user.storeRating).toFixed(1) : "5.0"}
+            </Text>
+            <Text style={{ color: "#E0F2FE", marginLeft: 4, fontSize: 13 }}>
+              ({user?.storeRatingCount || 0} đánh giá)
+            </Text>
+          </View>
+        </View>
         <TouchableOpacity onPress={fetchDashboardData}>
           <Feather name="refresh-cw" size={22} color="#ffffff" />
         </TouchableOpacity>
@@ -99,11 +157,11 @@ const StoreDashboard = () => {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#F97316"
+            color={colors.blue_primary}
             style={{ marginTop: 50 }}
           />
         ) : (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
             {/* KHỐI 1: CÔNG TẮC */}
             <View style={styles.statusCard}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -156,7 +214,7 @@ const StoreDashboard = () => {
                   ]}
                 >
                   <Text
-                    style={[styles.statNumber, { color: "#F97316" }]}
+                    style={[styles.statNumber, { color: colors.blue_primary }]}
                   >
                     {summary.completed_orders}
                   </Text>
@@ -178,16 +236,15 @@ const StoreDashboard = () => {
                 style={styles.menuItem}
                 onPress={() => navigation.navigate("StoreProducts")}
               >
-                <Feather name="list" size={28} color="#F97316" />
+                <Feather name="list" size={28} color={colors.blue_primary} />
                 <Text style={styles.menuText}>Thực đơn</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => navigation.navigate("StoreVouchers")}
+              >
                 <Ionicons name="ticket-outline" size={28} color="#F59E0B" />
                 <Text style={styles.menuText}>Khuyến mãi</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
-                <Feather name="bar-chart-2" size={28} color="#8B5CF6" />
-                <Text style={styles.menuText}>Báo cáo</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -199,7 +256,7 @@ const StoreDashboard = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#F97316", // Đã đổi sang màu cam chủ đạo
+    backgroundColor: "#3498db", // Sếp có thể đổi thành colors.blue_primary nếu muốn
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

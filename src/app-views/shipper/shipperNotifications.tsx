@@ -6,24 +6,26 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  StatusBar,
+  TouchableOpacity,
 } from "react-native";
-import HeaderApp from "@app-components/HeaderApp/HeaderApp";
-import { Container } from "@app-layout/Layout";
-import { Feather } from "@expo/vector-icons";
-import colors from "@assets/colors/global_colors";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useSelector, shallowEqual } from "react-redux";
 import { RootState } from "@redux/store";
 import useCallAPI from "@app-helper/useCallAPI";
 import URL_API from "@app-helper/urlAPI";
-
-// 🌟 THÊM MỚI: Import Socket để trang thông báo tự động nổ thông báo thời gian thực
 import socket from "@app-helper/socketHelper";
 
-const Notification: React.FC = () => {
-  const { tokenData } = useSelector(
+const ShipperNotifications: React.FC = () => {
+  const auth = useSelector(
     (state: RootState) => state.auth,
     shallowEqual,
   );
+  const tokenData = auth?.tokenData;
+  const userObj = (auth as any)?.user;
+  const userId = userObj?.id;
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,31 +36,46 @@ const Notification: React.FC = () => {
     try {
       const response = await useCallAPI({
         method: "GET",
-        url: `${URL_API}/notifications?role=user`,
+        url: `${URL_API}/notifications?role=shipper`,
         token: tokenData,
       });
-      if (response && Array.isArray(response)) {
-        setNotifications(response);
-      } else if (response && Array.isArray(response.data)) {
+      if (response && Array.isArray(response.data)) {
         setNotifications(response.data);
+      } else if (Array.isArray(response)) {
+        setNotifications(response);
       }
     } catch (error) {
-      console.log("Lỗi tải thông báo:", error);
+      console.log("Lỗi tải thông báo tài xế:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReadAll = async () => {
+    if (!tokenData) return;
+    try {
+      await useCallAPI({
+        method: "POST",
+        url: `${URL_API}/notifications/read-all`,
+        token: tokenData,
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+    } catch (error) {
+      console.log("Lỗi đánh dấu đã đọc:", error);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
 
-    // 🌟 THÊM MỚI: Lắng nghe tín hiệu Real-time từ hàm createNotification của Backend đẩy sang
+    if (userId) {
+      socket.emit("register_user", userId);
+      console.log(`🔌 Tài xế đã nối sóng register_user từ ShipperNotifications thành công với ID: ${userId}`);
+    }
+
+    // Lắng nghe thông báo nổ đơn / cuốc xe mới / cộng thu nhập
     socket.on("receive_notification", (newNoti) => {
-      console.log(
-        "🔔 TRANG NOTIFICATION USER ĐÃ HỨNG THÀNH CÔNG THÔNG BÁO:",
-        newNoti,
-      );
-      // Đẩy thông báo mới chèn lên đầu danh sách để giữ đúng thứ tự từ mới nhất đến cũ nhất, tránh trùng lặp
+      console.log("🏍️ TÀI XẾ ĐÃ HỨNG THÀNH CÔNG THÔNG BÁO:", newNoti);
       setNotifications((prev) => {
         if (newNoti.id && prev.some((n) => n.id === newNoti.id)) {
           return prev;
@@ -70,7 +87,7 @@ const Notification: React.FC = () => {
     return () => {
       socket.off("receive_notification");
     };
-  }, [tokenData]);
+  }, [tokenData, userId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -79,15 +96,21 @@ const Notification: React.FC = () => {
   };
 
   return (
-    <Container style={{ backgroundColor: "#f5f6fa" }}>
-      <View style={styles.headerRow}>
-        <HeaderApp title="Thông báo của sếp" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+      <StatusBar barStyle="light-content" backgroundColor="#F97316" />
+      
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Thông báo tài xế</Text>
+        <TouchableOpacity onPress={handleReadAll} style={styles.readAllBtn}>
+          <Feather name="check-square" size={20} color="#ffffff" />
+        </TouchableOpacity>
       </View>
 
       {loading && notifications.length === 0 ? (
         <ActivityIndicator
           size="large"
-          color={colors.orange_primary}
+          color="#F97316"
           style={{ marginTop: 40 }}
         />
       ) : (
@@ -100,23 +123,22 @@ const Notification: React.FC = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            // 🌟 ĐÃ XÓA KHÓA SCROLL để sếp tự do vuốt xem toàn bộ danh sách thông báo lịch sử
             renderItem={({ item }) => (
               <View
                 style={[
                   styles.notiCard,
-                  { backgroundColor: item.is_read ? "#fff" : "#EBF5FF" },
+                  { backgroundColor: item.is_read ? "#fff" : "#FFF7ED" },
                 ]}
               >
-                <View style={styles.iconWrapper}>
-                  {item.type === "order" || item.type === "order_status" ? (
+                <View style={[styles.iconWrapper, { backgroundColor: item.is_read ? "#E5E7EB" : "#FFEDD5" }]}>
+                  {item.type === "order" || item.title.includes("cộng") || item.title.includes("Thu nhập") ? (
                     <Feather
-                      name="shopping-bag"
+                      name="trending-up"
                       size={20}
-                      color={colors.orange_primary}
+                      color="#EA580C"
                     />
                   ) : (
-                    <Feather name="gift" size={20} color="#EF4444" />
+                    <Feather name="bell" size={20} color="#EA580C" />
                   )}
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -128,61 +150,60 @@ const Notification: React.FC = () => {
                   >
                     {item.title}
                   </Text>
-                  {/* 🌟 ĐÃ KHỚP LẠI BIẾN: Đọc đúng cột content hoặc message lịch sử từ DB */}
                   <Text style={styles.notiBody}>
-                    {item.content ||
-                      item.message ||
-                      item.comment_text ||
-                      item.body}
+                    {item.content || item.message}
                   </Text>
                   <Text style={styles.notiTime}>
                     {item.created_at
-                      ? new Date(item.created_at).toLocaleDateString("vi-VN") +
-                        " - " +
-                        new Date(item.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? new Date(item.created_at).toLocaleString("vi-VN")
                       : ""}
                   </Text>
                 </View>
               </View>
             )}
             ListEmptyComponent={() => (
-              <View style={{ alignItems: "center", marginTop: 50 }}>
-                <Text style={{ color: "#999" }}>
-                  Hộp thư trống trải sếp ơi!
-                </Text>
+              <View style={styles.emptyContainer}>
+                <Ionicons name="notifications-off-outline" size={60} color="#9CA3AF" />
+                <Text style={styles.emptyText}>Chưa có thông báo nào!</Text>
               </View>
             )}
           />
         </View>
       )}
-    </Container>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  headerRow: {
+  header: {
+    backgroundColor: "#F97316",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.orange_primary,
-    paddingRight: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  readAllBtn: {
+    padding: 4,
   },
   notiCard: {
     flexDirection: "row",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#E5E7EB",
     alignItems: "flex-start",
   },
-  iconWrapper: { backgroundColor: "#F3F4F6", padding: 10, borderRadius: 50 },
+  iconWrapper: { padding: 10, borderRadius: 50 },
   notiTitle: { fontSize: 15, color: "#111827" },
   notiBody: { fontSize: 13, color: "#4B5563", marginTop: 4, lineHeight: 18 },
   notiTime: { fontSize: 11, color: "#9CA3AF", marginTop: 6 },
+  emptyContainer: { alignItems: "center", marginTop: 100 },
+  emptyText: { marginTop: 10, color: "#9CA3AF", fontSize: 15 },
 });
 
-export default Notification;
+export default ShipperNotifications;

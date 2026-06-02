@@ -63,6 +63,10 @@ const persistAuthData = async (payload: any) => {
     license_plate: payload.user?.license_plate,
     avatar: payload.user?.avatar,
     password: payload?.password,
+    shipperRating: payload.user?.shipperRating,
+    shipperRatingCount: payload.user?.shipperRatingCount,
+    storeRating: payload.user?.storeRating,
+    storeRatingCount: payload.user?.storeRatingCount,
   };
 
   await saveObjectDataToStorage(KEY_STORAGE.ACCOUNT_DATA, accountData);
@@ -162,6 +166,14 @@ const authSlice = createSlice({
           shipperPhone:
             action.payload.shipperPhone !== undefined ? action.payload.shipperPhone : state.account.shipperPhone, // Shipper
           avatar: action.payload.avatar || state.account.avatar, // Ảnh đại diện dùng chung
+          shipperRating:
+            action.payload.shipperRating !== undefined ? action.payload.shipperRating : state.account.shipperRating,
+          shipperRatingCount:
+            action.payload.shipperRatingCount !== undefined ? action.payload.shipperRatingCount : state.account.shipperRatingCount,
+          storeRating:
+            action.payload.storeRating !== undefined ? action.payload.storeRating : state.account.storeRating,
+          storeRatingCount:
+            action.payload.storeRatingCount !== undefined ? action.payload.storeRatingCount : state.account.storeRatingCount,
         };
       }
 
@@ -183,6 +195,10 @@ const authSlice = createSlice({
           vehicle: action.payload.vehicle !== undefined ? action.payload.vehicle : state.user.vehicle,
           shipperPhone: action.payload.shipperPhone !== undefined ? action.payload.shipperPhone : state.user.shipperPhone,
           license_plate: action.payload.license_plate !== undefined ? action.payload.license_plate : state.user.license_plate,
+          shipperRating: action.payload.shipperRating !== undefined ? action.payload.shipperRating : state.user.shipperRating,
+          shipperRatingCount: action.payload.shipperRatingCount !== undefined ? action.payload.shipperRatingCount : state.user.shipperRatingCount,
+          storeRating: action.payload.storeRating !== undefined ? action.payload.storeRating : state.user.storeRating,
+          storeRatingCount: action.payload.storeRatingCount !== undefined ? action.payload.storeRatingCount : state.user.storeRatingCount,
         };
       }
 
@@ -222,6 +238,10 @@ const authSlice = createSlice({
           shipperPhone: localAccount.shipperPhone || null,
           license_plate: localAccount.license_plate || null,
           avatar: localAccount.avatar || null,
+          shipperRating: localAccount.shipperRating || null,
+          shipperRatingCount: localAccount.shipperRatingCount || null,
+          storeRating: localAccount.storeRating || null,
+          storeRatingCount: localAccount.storeRatingCount || null,
         };
       } else {
         state.account = null;
@@ -269,6 +289,10 @@ const authSlice = createSlice({
             shipperPhone: payload.user?.shipperPhone || null,
             license_plate: payload.user?.license_plate || null,
             avatar: payload.user?.avatar || null,
+            shipperRating: payload.user?.shipperRating || null,
+            shipperRatingCount: payload.user?.shipperRatingCount || null,
+            storeRating: payload.user?.storeRating || null,
+            storeRatingCount: payload.user?.storeRatingCount || null,
           };
 
           state.tokenData = payload.token;

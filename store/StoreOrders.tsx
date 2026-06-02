@@ -114,7 +114,11 @@ const StoreOrders = () => {
     return () => clearInterval(interval);
   }, [activeTab, storeId, tokenData]);
 
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
+
   const handleUpdateStatus = async (orderId: number, newStatus: string) => {
+    if (submittingId) return;
+    setSubmittingId(orderId);
     try {
       const res = await useCallAPI({
         method: "PUT",
@@ -123,7 +127,7 @@ const StoreOrders = () => {
         data: { status: newStatus, note: "Cửa hàng xử lý" },
       });
 
-      if (res.status === "success" || res.status === 200) {
+      if (res.status === "success" || res.status === 200 || res.success !== false) {
         Alert.alert("Thành công", `Đã cập nhật trạng thái đơn thành công!`);
         fetchOrders();
 
@@ -135,6 +139,8 @@ const StoreOrders = () => {
       }
     } catch (error) {
       Alert.alert("Lỗi", "Không thể duyệt đơn lúc này.");
+    } finally {
+      setSubmittingId(null);
     }
   };
 
@@ -225,19 +231,25 @@ const StoreOrders = () => {
         <Text style={styles.detailBtnText}>Xem chi tiết đơn hàng</Text>
       </TouchableOpacity>
 
-      {activeTab === "pending" && (
+       {activeTab === "pending" && (
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.btn, styles.btnReject]}
             onPress={() => handleUpdateStatus(item.id, "Đơn đã bị hủy")}
+            disabled={submittingId !== null}
           >
             <Text style={styles.btnTextReject}>Từ chối</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btn, styles.btnAccept]}
             onPress={() => handleUpdateStatus(item.id, "Quán đã nhận đơn")}
+            disabled={submittingId !== null}
           >
-            <Text style={styles.btnTextAccept}>Nhận đơn</Text>
+            {submittingId === item.id ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.btnTextAccept}>Nhận đơn</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -255,10 +267,15 @@ const StoreOrders = () => {
             <TouchableOpacity
               style={[styles.btn, styles.btnAccept, { marginTop: 5 }]}
               onPress={() => handleUpdateStatus(item.id, "Đang giao hàng")}
+              disabled={submittingId !== null}
             >
-              <Text style={styles.btnTextAccept}>
-                Giao cho Tài xế (Xế đã nhận đơn)
-              </Text>
+              {submittingId === item.id ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.btnTextAccept}>
+                  Giao cho Tài xế (Xế đã nhận đơn)
+                </Text>
+              )}
             </TouchableOpacity>
           )}
         </View>

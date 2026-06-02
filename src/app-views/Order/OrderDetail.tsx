@@ -9,10 +9,9 @@ import {
   Alert,
 } from "react-native";
 import AppImage from "@app-uikits/AppImage";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { useSelector, shallowEqual } from "react-redux";
-import { Content } from "@app-layout/Layout";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Container, Content } from "@app-layout/Layout";
 import HeaderCustom from "@app-components/HeaderCustom/HeaderCustom";
 import { RootState } from "@redux/store";
 import { useNavigationServices } from "@app-helper/navigateToScreens";
@@ -22,6 +21,8 @@ import { useAppTheme } from "src/app-context/ThemeContext";
 
 // 🔥 THÊM SOCKET.IO CLIENT
 import { io } from "socket.io-client";
+import ReviewOrderModal from "./ReviewOrderModal";
+import showToastApp from "@app-components/CustomToast/ShowToastApp";
 
 const STATUS_STEPS = ["pending", "confirmed", "delivering", "completed"];
 const STATUS_LABELS: Record<string, string> = {
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<string, string> = {
 const OrderDetail: React.FC = () => {
   const { themeColors } = useAppTheme();
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { goToBack, replaceScreen } = useNavigationServices();
 
   const { tokenData, user } = useSelector(
@@ -49,9 +51,12 @@ const OrderDetail: React.FC = () => {
     passedData?.items || passedData?.products || [],
   );
   const [loading, setLoading] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   // 🔥 SỬA LỖI DÒNG 66 VÀ QUÉT DỮ LIỆU
   const displayId =
+    route.params?.orderId ||
     order?.order_id ||
     order?.id ||
     passedData?.order_id ||
@@ -65,21 +70,17 @@ const OrderDetail: React.FC = () => {
 
   // Bùa ép trạng thái
   const rawStatus =
-    order?.status ||
     order?.order_status ||
-    passedData?.status ||
+    order?.status ||
     passedData?.order_status ||
+    passedData?.status ||
     "pending";
   let activeStatus = String(rawStatus).trim().toLowerCase();
-  if (activeStatus === "quán đã nhận đơn" || activeStatus === "preparing" || activeStatus === "confirmed") {
-    activeStatus = "confirmed";
-  } else if (activeStatus === "đang giao hàng" || activeStatus === "delivering") {
-    activeStatus = "delivering";
-  } else if (activeStatus === "completed" || activeStatus === "hoàn thành" || activeStatus === "giao hàng thành công") {
-    activeStatus = "completed";
-  } else if (activeStatus === "đơn đã bị hủy" || activeStatus === "cancelled") {
-    activeStatus = "cancelled";
-  } else {
+  if (
+    !["pending", "confirmed", "delivering", "completed", "cancelled"].includes(
+      activeStatus,
+    )
+  ) {
     activeStatus = "pending";
   }
   const currentStepIndex = STATUS_STEPS.indexOf(activeStatus);
@@ -93,7 +94,7 @@ const OrderDetail: React.FC = () => {
   else if (activeStatus === "delivering")
     statusBannerText = "🚀 Tài xế đang trên đường giao món đến bạn...";
   else if (activeStatus === "completed")
-    statusBannerText = "🎉 Đơn hàng giao thành công. Chúc bạn ngon miệng!";
+    statusBannerText = "🎉 Đơn hàng giao thành công. Chúc sếp ngon miệng!";
   else if (activeStatus === "cancelled")
     statusBannerText = "❌ Đơn hàng này đã bị hủy.";
 
@@ -116,11 +117,47 @@ const OrderDetail: React.FC = () => {
     }
   };
 
+  const isVnpay = order?.payment_method === 'vnpay' || order?.payment_method?.value === 'vnpay' || order?.payment_method_value === 'vnpay' || passedData?.payment_method === 'vnpay';
+  const isUnpaid = order?.payment_status !== 'paid' && passedData?.payment_status !== 'paid';
+  const isCancellableOrActive = activeStatus !== "completed" && activeStatus !== "cancelled" && activeStatus !== "Đơn đã bị hủy";
+  const showPayNowButton = isVnpay && isUnpaid && isCancellableOrActive;
+
+  const handlePayNow = async () => {
+    if (paying) return;
+    setPaying(true);
+    try {
+      const res = await useCallAPI({
+        method: "POST",
+        url: `${URL_API}/payments/vnpay/create_url`,
+        token: tokenData,
+        data: {
+          order_id: displayId,
+          amount: displayTotal,
+        }
+      });
+      
+      const vnpUrl = res?.data?.url || res?.url || res?.data;
+      if (vnpUrl) {
+        navigation.navigate("VNPayWebView", {
+          url: vnpUrl,
+          orderId: displayId
+        });
+      } else {
+        Alert.alert("Lỗi", "Không thể tạo liên kết thanh toán lúc này.");
+      }
+    } catch (err) {
+      console.log("Error creating VNPay payment URL:", err);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi tạo liên kết thanh toán.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   // 🔥 KHỞI TẠO VÀ LẮNG NGHE SOCKET.IO
   useEffect(() => {
     fetchOrderDetails();
 
-    // Kết nối đến Server Socket Backend (bạn nhớ đảm bảo URL_API hoặc địa chỉ IP trỏ đúng)
+    // Kết nối đến Server Socket Backend (Sếp nhớ đảm bảo URL_API hoặc địa chỉ IP trỏ đúng)
     const socketUrl = URL_API
       ? URL_API.replace("/api", "")
       : "http://192.168.1.31:3000";
@@ -128,24 +165,23 @@ const OrderDetail: React.FC = () => {
 
     socket.on("connect", () => {
       console.log(
-        `🔌 Kết nối Socket thành công! Đăng ký vào phòng User ID: ${userId} và đơn: ${displayId}`,
+        `🔌 Kết nối Socket thành công! Đăng ký vào phòng User ID: ${userId}`,
       );
       socket.emit("register_user", userId);
-      socket.emit("join_order_room", { orderId: displayId });
     });
 
     // Nhận tín hiệu từ Quán / Shipper
-    socket.on("order_status_updated", (data: any) => {
+    socket.on("order_status_changed", (data: any) => {
       console.log("🔥 Nhận được tin Socket đổi trạng thái:", data);
-      setOrder((prev: any) => ({
-        ...prev,
-        status: data.status,
-        order_status: data.status,
-      }));
+      fetchOrderDetails();
+    });
+
+    socket.on("order_status_updated", (data: any) => {
+      console.log("🔥 Nhận được tin Socket đổi trạng thái (updated):", data);
+      fetchOrderDetails();
     });
 
     return () => {
-      socket.emit("leave_order_room", { orderId: displayId });
       socket.disconnect();
     };
   }, [displayId, userId]);
@@ -154,7 +190,7 @@ const OrderDetail: React.FC = () => {
     if (!displayId || displayId === "Đang xử lý..." || !tokenData) return;
     Alert.alert(
       "Xác nhận hủy",
-      "bạn có chắc chắn muốn hủy đơn hàng này không?",
+      "Sếp có chắc chắn muốn hủy đơn hàng này không?",
       [
         { text: "Đóng", style: "cancel" },
         {
@@ -225,7 +261,7 @@ const OrderDetail: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={["top", "left", "right"]}>
+    <Container style={{ backgroundColor: themeColors.bg }}>
       <HeaderCustom
         title="Theo dõi đơn hàng"
         onPressLeft={
@@ -359,9 +395,24 @@ const OrderDetail: React.FC = () => {
           </View>
           <View style={styles.rowInfo}>
             <Text style={styles.label}>Thanh toán:</Text>
-            <Text style={[styles.value, { color: themeColors.text }]}>
-              Tiền mặt (COD)
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flex: 1 }}>
+              <Text style={[styles.value, { color: themeColors.text, textAlign: "right", marginRight: 6 }]}>
+                {order?.payment_method === 'vnpay' || order?.payment_method?.value === 'vnpay' || order?.payment_method_value === 'vnpay' || passedData?.payment_method === 'vnpay' ? 'Ví VNPay' : 'Tiền mặt (COD)'}
+              </Text>
+              {(order?.payment_method === 'vnpay' || order?.payment_method?.value === 'vnpay' || order?.payment_method_value === 'vnpay' || passedData?.payment_method === 'vnpay') && (
+                <View style={[
+                  styles.paymentStatusBadge, 
+                  { backgroundColor: order?.payment_status === 'paid' ? '#ECFDF5' : '#FEF3C7' }
+                ]}>
+                  <Text style={[
+                    styles.paymentStatusText, 
+                    { color: order?.payment_status === 'paid' ? '#10B981' : '#D97706' }
+                  ]}>
+                    {order?.payment_status === 'paid' ? 'Đã thanh toán' : 'Chờ thanh toán'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.rowInfo}>
             <Text style={styles.label}>Thời gian:</Text>
@@ -371,22 +422,6 @@ const OrderDetail: React.FC = () => {
                 : new Date().toLocaleString("vi-VN")}
             </Text>
           </View>
-          {Number(order?.shipping_fee) > 0 && (
-            <View style={styles.rowInfo}>
-              <Text style={styles.label}>Phí giao hàng (Ship):</Text>
-              <Text style={[styles.value, { color: themeColors.text }]}>
-                +{Number(order.shipping_fee).toLocaleString()} đ
-              </Text>
-            </View>
-          )}
-          {Number(order?.service_fee) > 0 && (
-            <View style={styles.rowInfo}>
-              <Text style={styles.label}>Phí dịch vụ:</Text>
-              <Text style={[styles.value, { color: themeColors.text }]}>
-                +{Number(order.service_fee).toLocaleString()} đ
-              </Text>
-            </View>
-          )}
           <View
             style={[
               styles.rowInfo,
@@ -450,38 +485,91 @@ const OrderDetail: React.FC = () => {
         />
 
         {/* Nút Hành Động */}
-        <View style={styles.actions}>
-          {activeStatus === "pending" ? (
+        <View style={{ marginTop: 10, marginBottom: 40 }}>
+          {showPayNowButton && (
             <TouchableOpacity
-              style={[styles.button, styles.cancelBtn]}
-              onPress={handleCancel}
+              style={[
+                styles.button,
+                {
+                  backgroundColor: "#FF5722",
+                  marginBottom: 12,
+                  width: "100%",
+                },
+              ]}
+              disabled={paying}
+              onPress={handlePayNow}
             >
-              <Text style={styles.btnText}>Yêu cầu hủy đơn</Text>
+              {paying ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.btnText}>Thanh toán ngay qua VNPay</Text>
+              )}
             </TouchableOpacity>
-          ) : (
-            activeStatus !== "cancelled" && (
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor: themeColors.bg,
-                    borderWidth: 1,
-                    borderColor: "#D1D5DB",
-                  },
-                ]}
-                onPress={() =>
-                  Alert.alert("Hỗ trợ", "Tổng đài InOrder: 1900 xxxx")
-                }
-              >
-                <Text style={[styles.btnText, { color: themeColors.text }]}>
-                  Gọi tổng đài hỗ trợ
-                </Text>
-              </TouchableOpacity>
-            )
           )}
+
+          <View style={{ flexDirection: "row" }}>
+            {activeStatus === "pending" ? (
+              <TouchableOpacity
+                style={[styles.button, styles.cancelBtn]}
+                onPress={handleCancel}
+              >
+                <Text style={styles.btnText}>Yêu cầu hủy đơn</Text>
+              </TouchableOpacity>
+            ) : (
+              activeStatus !== "cancelled" && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      {
+                        backgroundColor: themeColors.bg,
+                        borderWidth: 1,
+                        borderColor: "#D1D5DB",
+                      },
+                    ]}
+                    onPress={() =>
+                      Alert.alert("Hỗ trợ", "Tổng đài InOrder: 1900 xxxx")
+                    }
+                  >
+                    <Text style={[styles.btnText, { color: themeColors.text }]}>
+                      Gọi tổng đài hỗ trợ
+                    </Text>
+                  </TouchableOpacity>
+                  {activeStatus === "completed" && (
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        {
+                          backgroundColor: "#10B981",
+                          marginLeft: 10,
+                        },
+                      ]}
+                      onPress={() => setShowReviewModal(true)}
+                    >
+                      <Text style={[styles.btnText, { color: "#fff" }]}>
+                        Đánh giá ngay
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )
+            )}
+          </View>
         </View>
       </Content>
-    </SafeAreaView>
+      {showReviewModal && (
+        <ReviewOrderModal
+          visible={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          orderId={displayId}
+          tokenData={tokenData}
+          onSuccess={() => {
+            fetchOrderDetails();
+          }}
+          existingReview={order?.review}
+        />
+      )}
+    </Container>
   );
 };
 
@@ -565,6 +653,15 @@ const styles = StyleSheet.create({
   },
   cancelBtn: { backgroundColor: "#EF4444" },
   btnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  paymentStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  paymentStatusText: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
 });
 
 export default OrderDetail;
