@@ -18,6 +18,7 @@ import URL_API from "@app-helper/urlAPI";
 import socket from "@app-helper/socketHelper";
 
 const ShipperNotifications: React.FC = () => {
+<<<<<<< HEAD
   const auth = useSelector(
     (state: RootState) => state.auth,
     shallowEqual,
@@ -26,6 +27,12 @@ const ShipperNotifications: React.FC = () => {
   const userObj = (auth as any)?.user;
   const userId = userObj?.id;
 
+=======
+  const { tokenData } = useSelector(
+    (state: RootState) => state.auth,
+    shallowEqual,
+  );
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +43,7 @@ const ShipperNotifications: React.FC = () => {
     try {
       const response = await useCallAPI({
         method: "GET",
+<<<<<<< HEAD
         url: `${URL_API}/notifications?role=shipper`,
         token: tokenData,
       });
@@ -43,6 +51,15 @@ const ShipperNotifications: React.FC = () => {
         setNotifications(response.data);
       } else if (Array.isArray(response)) {
         setNotifications(response);
+=======
+        url: `${URL_API}/notifications`,
+        token: tokenData,
+      });
+      if (response && Array.isArray(response.data)) {
+        setNotifications(response.data.filter((n: any) => n.target_role === "shipper"));
+      } else if (Array.isArray(response)) {
+        setNotifications(response.filter((n: any) => n.target_role === "shipper"));
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
       }
     } catch (error) {
       console.log("Lỗi tải thông báo tài xế:", error);
@@ -68,6 +85,7 @@ const ShipperNotifications: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
 
+<<<<<<< HEAD
     if (userId) {
       socket.emit("register_user", userId);
       console.log(`🔌 Tài xế đã nối sóng register_user từ ShipperNotifications thành công với ID: ${userId}`);
@@ -82,12 +100,22 @@ const ShipperNotifications: React.FC = () => {
         }
         return [newNoti, ...prev];
       });
+=======
+    // Lắng nghe thông báo nổ đơn / cuốc xe mới / cộng thu nhập
+    socket.on("receive_notification", (newNoti) => {
+      console.log("🏍️ TÀI XẾ ĐÃ HỨNG THÀNH CÔNG THÔNG BÁO:", newNoti);
+      setNotifications((prev) => [newNoti, ...prev]);
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
     });
 
     return () => {
       socket.off("receive_notification");
     };
+<<<<<<< HEAD
   }, [tokenData, userId]);
+=======
+  }, [tokenData]);
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
 
   const onRefresh = async () => {
     setRefreshing(true);

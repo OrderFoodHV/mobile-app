@@ -32,6 +32,7 @@ const StoreNotifications: React.FC = () => {
     try {
       const response = await useCallAPI({
         method: "GET",
+<<<<<<< HEAD
         url: `${URL_API}/notifications?role=store`,
         token: tokenData,
       });
@@ -39,6 +40,15 @@ const StoreNotifications: React.FC = () => {
         setNotifications(response.data);
       } else if (Array.isArray(response)) {
         setNotifications(response);
+=======
+        url: `${URL_API}/notifications`,
+        token: tokenData,
+      });
+      if (response && Array.isArray(response.data)) {
+        setNotifications(response.data.filter((n: any) => n.target_role === "store"));
+      } else if (Array.isArray(response)) {
+        setNotifications(response.filter((n: any) => n.target_role === "store"));
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
       }
     } catch (error) {
       console.log("Lỗi tải thông báo cửa hàng:", error);
@@ -64,6 +74,7 @@ const StoreNotifications: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
 
+<<<<<<< HEAD
     if (account?.storeId) {
       socket.emit("register_store", account.storeId);
       console.log(`🔌 Quán đã nối sóng thành công từ StoreNotifications vào phòng: store_room_\${account.storeId}`);
@@ -78,12 +89,22 @@ const StoreNotifications: React.FC = () => {
         }
         return [newNoti, ...prev];
       });
+=======
+    // Lắng nghe thông báo nổ đơn / thanh toán trực tuyến thời gian thực cho Shop
+    socket.on("receive_notification", (newNoti) => {
+      console.log("🔔 CỬA HÀNG ĐÃ HỨNG THÀNH CÔNG THÔNG BÁO:", newNoti);
+      setNotifications((prev) => [newNoti, ...prev]);
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
     });
 
     return () => {
       socket.off("receive_notification");
     };
+<<<<<<< HEAD
   }, [tokenData, account?.storeId]);
+=======
+  }, [tokenData]);
+>>>>>>> 2f851c94ce818622a8cddf9cfd1048b05de2a084
 
   const onRefresh = async () => {
     setRefreshing(true);
